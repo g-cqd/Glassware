@@ -71,12 +71,7 @@ public struct SegmentedPickerItem<Value: Hashable, Label: View>: View {
             .frame(minWidth: style == .iconOnly ? metrics.minimumTapTarget : metrics.primaryButtonMinWidth)
             .frame(minHeight: metrics.minimumTapTarget)
             .padding(metrics.componentPadding)
-            // Report frame to parent via onGeometryChange (performance improvement over GeometryReader)
-            .onGeometryChange(for: CGRect.self) { geo in
-                geo.frame(in: .named("picker"))
-            } action: { frame in
-                // Frame is reported via preference key below
-            }
+            // Report frame to parent via preference key (using GeometryReader for stable frame tracking)
             .background {
                 GeometryReader { geo in
                     Color.clear.preference(
@@ -291,7 +286,8 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
 
     @ViewBuilder
     private var hitAreas: some View {
-        ForEach(Array(itemFrames.keys), id: \.self) { value in
+        // Use cachedSortedValues for stable iteration order (performance improvement)
+        ForEach(cachedSortedValues, id: \.self) { value in
             if let frame = itemFrames[value] {
                 Color.clear
                     .frame(width: frame.width, height: frame.height)

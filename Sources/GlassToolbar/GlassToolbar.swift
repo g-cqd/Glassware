@@ -24,6 +24,14 @@ import SwiftUI
 // - ToolbarPaddingConfiguration
 // - ToolbarLayoutDistribution
 //
+// Placement API:
+// - GlassToolbarPlacement
+// - GlassToolbarItem
+// - GlassToolbarItemGroup
+// - GlassToolbarContent
+// - GlassToolbarBuilder
+// - AnyGlassToolbarContent
+//
 // Styles:
 // - ToolbarItemIntent
 // - ToolbarItemVisualStyle
@@ -43,6 +51,7 @@ import SwiftUI
 //
 // View Extensions:
 // - View.glassToolbar(edge:glass:leading:content:trailing:)
+// - View.glassToolbarOverlay(glass:content:)
 // - View.toolbarDensity(_:)
 // - View.toolbarPadding(_:)
 // - View.toolbarDistribution(_:)

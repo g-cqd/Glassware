@@ -244,13 +244,10 @@ struct ToolbarContainer: View {
 
     // MARK: - Helper Views
 
-    /// Adaptive spacer that can collapse when space is limited.
-    @ViewBuilder
+    /// Spacer with minimum length that compresses gracefully when needed.
+    /// Note: Spacer already handles compression - ViewThatFits adds unnecessary layout passes.
     private func adaptiveSpacer(minLength: CGFloat) -> some View {
-        ViewThatFits {
-            Spacer(minLength: minLength)
-            Spacer(minLength: 0)
-        }
+        Spacer(minLength: minLength)
     }
 
     /// Creates glass container with placement environment and per-container namespace.
