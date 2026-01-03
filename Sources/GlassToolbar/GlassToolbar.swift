@@ -36,6 +36,7 @@ import SwiftUI
 // - SegmentedPicker
 // - SegmentedPickerItem
 // - SegmentedPickerStyle
+// - ToolbarMenuPicker
 //
 // Tokens:
 // - ToolbarTokens
