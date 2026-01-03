@@ -82,8 +82,12 @@ extension GlassToolbarPlacement {
 
     /// Accessory view above the bottom toolbar.
     ///
-    /// - Parameter offset: Distance from accessory to primary content.
-    ///   Negative values overlap ("melt" into primary), positive values add spacing.
+    /// Default spacing is 12pt above primary content (constant, density-independent).
+    ///
+    /// - Parameter offset: Adjustment to the default 12pt spacing.
+    ///   - Positive values add more separation (accessory moves further from primary).
+    ///   - Negative values reduce separation (accessory moves toward primary / overlaps).
+    ///   - Example: `offset: -8` gives 4pt spacing (12 - 8 = 4pt).
     public static func bottomAccessory(offset: CGFloat = 0) -> GlassToolbarPlacement {
         GlassToolbarPlacement(edge: .bottom, position: .primary, accessoryOffset: offset)
     }
@@ -173,13 +177,19 @@ extension GlassToolbarPlacement {
 // MARK: - Semantic Accessory Helpers
 
 extension GlassToolbarPlacement {
-    /// Accessory that overlaps with primary content by 8pt ("melting" effect).
+    /// Accessory positioned close to primary content (4pt gap instead of default 12pt).
+    ///
+    /// Creates a "melting" visual effect where the accessory appears to merge
+    /// with the primary toolbar through glass effect overlap.
     public static func bottomAccessoryMelted() -> GlassToolbarPlacement {
         .bottomAccessory(offset: -8)
     }
 
-    /// Accessory separated from primary content by default spacing.
-    public static func bottomAccessorySeparated(spacing: CGFloat = 16) -> GlassToolbarPlacement {
+    /// Accessory with additional separation from primary content.
+    ///
+    /// - Parameter spacing: Extra spacing to add beyond the default 12pt.
+    ///   Example: `spacing: 8` gives 20pt total gap (12 + 8 = 20pt).
+    public static func bottomAccessorySeparated(spacing: CGFloat = 8) -> GlassToolbarPlacement {
         .bottomAccessory(offset: spacing)
     }
 }

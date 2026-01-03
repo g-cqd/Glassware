@@ -64,6 +64,7 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
 
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.toolbarDensity) private var density
+    @Environment(\.toolbarSizeContext) private var sizeContext
     @Environment(\.toolbarContainerNamespace) private var namespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.toolbarForcedVisualStyle) private var forcedVisualStyle
@@ -81,9 +82,9 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
 
     // MARK: - Computed Properties
 
-    /// Layout metrics computed from density.
+    /// Layout metrics computed from density and edge context.
     private var metrics: ToolbarMetrics {
-        ToolbarMetrics(density: density)
+        ToolbarMetrics(density: density, context: sizeContext)
     }
 
     /// Actual minimum width, accounting for density.
@@ -91,14 +92,16 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
         baseMinWidth * (metrics.primaryButtonMinWidth / 64.0)
     }
 
-    /// Actual minimum height, accounting for density.
+    /// Actual minimum height, accounting for density and edge context.
+    /// Uses effectiveButtonSize for context-aware sizing.
     private var scaledMinHeight: CGFloat {
-        baseMinHeight * (metrics.minimumTapTarget / 44.0)
+        baseMinHeight * (metrics.effectiveButtonSize / 44.0)
     }
 
-    /// Actual icon button size, accounting for density.
+    /// Actual icon button size, accounting for density and edge context.
+    /// Uses effectiveButtonSize for context-aware sizing.
     private var scaledSize: CGFloat {
-        baseSize * (metrics.minimumTapTarget / 44.0)
+        baseSize * (metrics.effectiveButtonSize / 44.0)
     }
 
     /// Image scale based on density and visual style.
@@ -143,8 +146,8 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
                 minWidth: effectiveVisualStyle.isIconOnly ? scaledSize : scaledMinWidth,
                 minHeight: effectiveVisualStyle.isIconOnly ? scaledSize : scaledMinHeight
             )
-            .padding(.vertical, metrics.componentPadding)
-            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, metrics.effectiveComponentPadding)
+            .padding(.horizontal, effectiveHorizontalPadding)
             .background {
                 backgroundView(isPressed: configuration.isPressed)
             }
@@ -162,12 +165,12 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
     }
 
     /// Horizontal padding, slightly larger for text-containing styles on horizontal edges.
-    private var horizontalPadding: CGFloat {
+    private var effectiveHorizontalPadding: CGFloat {
         if effectiveVisualStyle.isIconOnly || containerContext.isVerticalEdge {
-            return metrics.componentPadding
+            return metrics.effectiveComponentPadding
         } else {
             // Increase horizontal padding for titleOnly and titleAndIcon styles
-            return metrics.componentPadding + 6
+            return metrics.effectiveComponentPadding + 6
         }
     }
 

@@ -7,6 +7,136 @@
 
 import SwiftUI
 
+// MARK: - Edge Size Context
+
+/// Context for edge-aware and collapse-aware sizing.
+///
+/// This type encapsulates the placement context that determines base button sizes
+/// before density scaling is applied. It enables the toolbar to match native iOS
+/// sizing patterns:
+/// - Top edge: 44pt (native navigation bar)
+/// - Bottom edge expanded: 50pt (native tab bar expanded)
+/// - Bottom edge collapsed: 44pt (native tab bar collapsed)
+/// - Accessory: 44pt (constant, never changes with collapse)
+///
+/// ## Usage
+/// The context is injected by `EdgeToolbarContainer` and read by button styles
+/// to determine appropriate sizing. You typically don't need to create this directly.
+public struct EdgeSizeContext: Sendable, Equatable {
+    /// The edge where the toolbar is positioned.
+    public let edge: ToolbarEdge
+
+    /// Whether this content is in an accessory placement.
+    public let isAccessory: Bool
+
+    /// Current collapse state (only affects bottom edge non-accessory content).
+    public let collapseState: ToolbarCollapseState
+
+    /// Creates an edge size context.
+    ///
+    /// - Parameters:
+    ///   - edge: The toolbar edge.
+    ///   - isAccessory: Whether content is in accessory placement.
+    ///   - collapseState: Current collapse state.
+    public init(
+        edge: ToolbarEdge,
+        isAccessory: Bool = false,
+        collapseState: ToolbarCollapseState = .expanded
+    ) {
+        self.edge = edge
+        self.isAccessory = isAccessory
+        self.collapseState = collapseState
+    }
+
+    /// Target container height for this context (final, including glass effect).
+    ///
+    /// Returns the exact container height matching native iOS patterns:
+    /// - Top edge: 44pt
+    /// - Bottom expanded (with primary): 62pt
+    /// - Bottom collapsed: 48pt
+    /// - Accessory: 48pt (constant, never changes)
+    /// - Side edges / everywhere else: 48pt
+    public var containerHeight: CGFloat {
+        switch (edge, isAccessory, collapseState) {
+        case (_, true, _):
+            // Accessory: always 48pt, never animates
+            48
+
+        case (.top, false, _):
+            // Top edge: 44pt
+            44
+
+        case (.bottom, false, .expanded):
+            // Bottom expanded with primary: 62pt
+            62
+
+        case (.bottom, false, .collapsed):
+            // Bottom collapsed: 48pt
+            48
+
+        case (.leading, false, _), (.trailing, false, _):
+            // Side edges: 48pt
+            48
+        }
+    }
+
+    /// Component padding adjustment for this context.
+    ///
+    /// Tuned empirically to achieve target container heights after glass effect.
+    /// Measured results used to calibrate:
+    /// - Top was 49pt, target 44pt → need -5pt total
+    /// - Accessory was 51pt, target 48pt → need -3pt total
+    /// - Bottom was 61pt, target 62pt → need +1pt total
+    public var componentPaddingAdjustment: CGFloat {
+        switch (edge, isAccessory, collapseState) {
+        case (_, true, _):
+            // Accessory: 48pt target (was 51pt, need -3pt total = -1.5pt per side)
+            -2.5
+
+        case (.top, false, _):
+            // Top: 44pt target (was 49pt, need -5pt total = -2.5pt per side)
+            -3.5
+
+        case (.bottom, false, .expanded):
+            // Bottom expanded: 62pt target (was 61pt, need +1pt total = +0.5pt per side)
+            2.5
+
+        case (.bottom, false, .collapsed):
+            // Bottom collapsed: 48pt target
+            -2.5
+
+        case (.leading, false, _), (.trailing, false, _):
+            // Side edges: 48pt target
+            -2.5
+        }
+    }
+
+    /// Container padding adjustment for this context.
+    public var containerPaddingAdjustment: CGFloat {
+        switch (edge, isAccessory, collapseState) {
+        case (_, true, _):
+            // Accessory: 48pt target
+            -2
+
+        case (.top, false, _):
+            // Top: 44pt target
+            -3
+
+        case (.bottom, false, .expanded):
+            // Bottom expanded: 62pt target
+            0
+
+        case (.bottom, false, .collapsed):
+            // Bottom collapsed: 48pt target
+            -2
+
+        case (.leading, false, _), (.trailing, false, _):
+            // Side edges: 48pt target
+            -2
+        }
+    }
+}
+
 // MARK: - Toolbar Padding Configuration
 
 /// Controls bottom padding behavior for the glass toolbar.
@@ -137,28 +267,84 @@ public enum ToolbarDensity: Int, Sendable, Equatable, CaseIterable {
 
 // MARK: - Toolbar Metrics
 
-/// Provides computed layout metrics based on the density setting.
+/// Provides computed layout metrics based on density and edge context.
 ///
 /// This struct centralizes all spacing and sizing calculations, reading from
 /// the environment and providing appropriate values for the current configuration.
 /// Use this instead of hard-coded values to ensure consistent adaptation.
 ///
+/// ## Context-Aware Sizing
+/// When initialized with an `EdgeSizeContext`, metrics adapt based on:
+/// - Edge position (top vs bottom)
+/// - Collapse state (expanded vs collapsed)
+/// - Placement type (primary vs accessory)
+///
 /// ## Usage
 /// ```swift
 /// struct MyToolbarView: View {
 ///     @Environment(\.toolbarDensity) private var density
+///     @Environment(\.toolbarSizeContext) private var sizeContext
 ///
 ///     var body: some View {
-///         let metrics = ToolbarMetrics(density: density)
-///         // Use metrics.edgePadding, metrics.containerSpacing, etc.
+///         let metrics = ToolbarMetrics(density: density, context: sizeContext)
+///         // Use metrics.effectiveButtonSize for context-aware sizing
 ///     }
 /// }
 /// ```
 public struct ToolbarMetrics: Sendable {
     public let density: ToolbarDensity
 
+    /// Optional edge context for adaptive sizing.
+    public let context: EdgeSizeContext?
+
+    /// Creates metrics with density only (legacy behavior).
     public init(density: ToolbarDensity) {
         self.density = density
+        self.context = nil
+    }
+
+    /// Creates metrics with density and edge context for adaptive sizing.
+    public init(density: ToolbarDensity, context: EdgeSizeContext?) {
+        self.density = density
+        self.context = context
+    }
+
+    // MARK: - Context-Aware Sizing
+
+    /// The effective button size.
+    ///
+    /// Button size stays consistent (based on density) - we adjust padding
+    /// to achieve target container heights instead of scaling buttons.
+    public var effectiveButtonSize: CGFloat {
+        minimumTapTarget
+    }
+
+    /// The effective container height considering edge context.
+    ///
+    /// Returns context-aware container height if context provided, otherwise
+    /// falls back to minimumTapTarget + padding.
+    public var effectiveContainerHeight: CGFloat {
+        guard let context else {
+            return minimumTapTarget + (containerPadding * 2)
+        }
+        return context.containerHeight
+    }
+
+    /// Effective component padding with context adjustments.
+    ///
+    /// Adjusts base component padding to achieve target container heights
+    /// while keeping text and icon sizes unchanged.
+    public var effectiveComponentPadding: CGFloat {
+        let base = componentPadding
+        guard let context else { return base }
+        return max(0, base + context.componentPaddingAdjustment)
+    }
+
+    /// Effective container padding with context adjustments.
+    public var effectiveContainerPadding: CGFloat {
+        let base = containerPadding
+        guard let context else { return base }
+        return max(0, base + context.containerPaddingAdjustment)
     }
 
     // MARK: - Size Metrics

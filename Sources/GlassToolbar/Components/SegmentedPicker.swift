@@ -54,6 +54,7 @@ public struct SegmentedPickerItem<Value: Hashable, Label: View>: View {
     @ViewBuilder let label: () -> Label
 
     @Environment(\.toolbarDensity) private var density
+    @Environment(\.toolbarSizeContext) private var sizeContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.pickerVisualSelection) private var visualSelection
 
@@ -72,7 +73,7 @@ public struct SegmentedPickerItem<Value: Hashable, Label: View>: View {
     }
 
     private var metrics: ToolbarMetrics {
-        ToolbarMetrics(density: density)
+        ToolbarMetrics(density: density, context: sizeContext)
     }
 
     /// Whether this item is visually selected (thumb is over it during drag).
@@ -92,7 +93,7 @@ public struct SegmentedPickerItem<Value: Hashable, Label: View>: View {
             .foregroundStyle(appearsSelected ? .primary : .secondary)
             .frame(minWidth: style == .iconOnly ? metrics.minimumTapTarget : metrics.primaryButtonMinWidth)
             .frame(minHeight: metrics.minimumTapTarget)
-            .padding(metrics.componentPadding)
+            .padding(metrics.effectiveComponentPadding)
             // Report frame to parent via preference key
             .background {
                 GeometryReader { geo in
@@ -180,6 +181,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
     @State private var isDragging = false
 
     @Environment(\.toolbarDensity) private var density
+    @Environment(\.toolbarSizeContext) private var sizeContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.toolbarEdge) private var toolbarEdge
     @Environment(\.toolbarContainerContext) private var containerContext
@@ -197,7 +199,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
     }
 
     private var metrics: ToolbarMetrics {
-        ToolbarMetrics(density: density)
+        ToolbarMetrics(density: density, context: sizeContext)
     }
 
     /// Effective axis, accounting for vertical toolbar edge placement.
@@ -283,6 +285,8 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
                 }
             }
         }
+        // Limit dynamic type to prevent picker from exceeding bounds
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         // Pass visual selection to items via environment
         .environment(\.pickerVisualSelection, visualSelection.map { VisualSelectionState($0) })
         .coordinateSpace(name: "picker")

@@ -67,7 +67,8 @@ struct GlassToolbarModifier: ViewModifier {
                         groups: groups,
                         edge: edge,
                         glass: glass,
-                        glassNamespace: glassNamespace
+                        glassNamespace: glassNamespace,
+                        collapseConfig: nil
                     )
                 }
                 .environment(\.toolbarEdge, edge)

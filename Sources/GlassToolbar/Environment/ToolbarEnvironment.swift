@@ -55,6 +55,11 @@ extension EnvironmentValues {
     /// Container context for toolbar items.
     /// Provides information about siblings within the same container.
     @Entry var toolbarContainerContext: ToolbarContainerContext = .default
+
+    /// Edge size context for adaptive sizing.
+    /// Set by EdgeToolbarContainer based on edge, placement, and collapse state.
+    /// Components read this to determine appropriate sizing that matches native iOS patterns.
+    @Entry public var toolbarSizeContext: EdgeSizeContext? = nil
 }
 
 // MARK: - Toolbar Container Context

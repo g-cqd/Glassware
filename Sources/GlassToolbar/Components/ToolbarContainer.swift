@@ -34,6 +34,7 @@ struct ToolbarContainer: View {
     // MARK: - Environment
 
     @Environment(\.toolbarDensity) private var density
+    @Environment(\.toolbarSizeContext) private var sizeContext
     @Environment(\.toolbarPaddingConfiguration) private var paddingConfig
     @Environment(\.toolbarLayoutDistribution) private var distribution
 
@@ -49,6 +50,17 @@ struct ToolbarContainer: View {
     /// Passed from EdgeToolbarContainer to ensure unified glass interaction.
     let glassNamespace: Namespace.ID
 
+    /// Configuration for collapse morphing animation (optional, only bottom edge uses it).
+    let collapseConfig: CollapseMorphConfig?
+
+    /// Configuration for container-level collapse morphing.
+    struct CollapseMorphConfig {
+        let namespace: Namespace.ID
+        let transitionID: String
+        let mergeSide: ToolbarMergeSide
+        let isCollapsed: Bool
+    }
+
     /// Tracks the cross-axis size for consistent container sizing.
     /// For horizontal edges (top/bottom), this is height.
     /// For vertical edges (leading/trailing), this is width.
@@ -56,15 +68,18 @@ struct ToolbarContainer: View {
 
     // MARK: - Computed Properties
 
-    /// Layout metrics computed from density environment value.
+    /// Layout metrics computed from density and edge context.
     private var metrics: ToolbarMetrics {
-        ToolbarMetrics(density: density)
+        ToolbarMetrics(density: density, context: sizeContext)
     }
 
     // MARK: - Body
 
     var body: some View {
         content
+            // Limit dynamic type to prevent toolbar from exceeding screen bounds.
+            // Accessibility1 allows significant scaling while keeping layout manageable.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .onGeometryChange(
             for: CGFloat.self,
             of: { edge.isHorizontal ? $0.size.height : $0.size.width },
@@ -219,6 +234,22 @@ struct ToolbarContainer: View {
         .glassEffectID(ToolbarButtonPlacement.trailing, in: glassNamespace)
     }
 
+    /// Anchor point for collapse scale animation based on merge side.
+    private var collapseAnchor: UnitPoint {
+        guard let config = collapseConfig else { return .center }
+        return config.mergeSide == .leading ? .leading : .trailing
+    }
+
+    /// Transition for primary container during collapse/expand.
+    private var primaryContainerTransition: AnyTransition {
+        .asymmetric(
+            insertion: .scale(scale: 0.85, anchor: collapseAnchor)
+                .combined(with: .opacity),
+            removal: .scale(scale: 0.7, anchor: collapseAnchor)
+                .combined(with: .opacity)
+        )
+    }
+
     @ViewBuilder
     private var primaryContainers: some View {
         ForEach(groups.indices, id: \.self) { index in
@@ -234,6 +265,18 @@ struct ToolbarContainer: View {
                 }
             }
             .glassEffectID(ToolbarButtonPlacement.primary, in: glassNamespace)
+            // Lower priority allows primary container to compress when space is constrained
+            .layoutPriority(-1)
+            .ifLet(collapseConfig) { view, config in
+                view
+                    .matchedGeometryEffect(
+                        id: config.transitionID,
+                        in: config.namespace,
+                        properties: .position,
+                        isSource: !config.isCollapsed
+                    )
+                    .transition(primaryContainerTransition)
+            }
 
             if let spacer = group.trailingSpacer {
                 adaptiveSpacer(minLength: spacer)
@@ -270,7 +313,7 @@ struct ToolbarContainer: View {
         if isSingleItem && edge.isHorizontal {
             // Circular container for single items on horizontal edges
             NamespacedContainer(placement: placement, context: context) { builtContent }
-                .padding(metrics.containerPadding)
+                .padding(metrics.effectiveContainerPadding)
                 .frame(
                     minWidth: edge.isVertical ? crossAxisSize : nil,
                     minHeight: edge.isHorizontal ? crossAxisSize : nil
@@ -283,12 +326,12 @@ struct ToolbarContainer: View {
                 builtContent
                     .environment(\.toolbarForcedVisualStyle, .iconOnly())
             }
-            .padding(metrics.containerPadding)
+            .padding(metrics.effectiveContainerPadding)
             .glassEffect(glass.interactive(), in: shape)
         } else {
             // Horizontal edge with multiple items or primary placement
             NamespacedContainer(placement: placement, context: context) { builtContent }
-                .padding(metrics.containerPadding)
+                .padding(metrics.effectiveContainerPadding)
                 .frame(minHeight: crossAxisSize)
                 .glassEffect(glass.interactive(), in: .capsule)
         }
@@ -436,6 +479,23 @@ extension RandomAccessCollection {
             self[index]
         } else {
             nil
+        }
+    }
+}
+
+// MARK: - Conditional Modifier
+
+extension View {
+    /// Applies a transformation only when the optional value is non-nil.
+    @ViewBuilder
+    func ifLet<T, Content: View>(
+        _ value: T?,
+        @ViewBuilder transform: (Self, T) -> Content
+    ) -> some View {
+        if let value {
+            transform(self, value)
+        } else {
+            self
         }
     }
 }
