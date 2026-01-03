@@ -40,7 +40,7 @@ private struct PaddingPreview: View {
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
-                .background(.ultraThinMaterial, in: .rect(cornerRadius: 8))
+
                 .padding()
             }
     }
@@ -212,7 +212,7 @@ private struct CustomPaddingBuilder: View {
                     Toggle("Ignore Safe Area", isOn: $ignoresSafeArea)
                 }
                 .padding()
-                .background(.ultraThinMaterial)
+                
             }
     }
 }

@@ -97,17 +97,15 @@ import SwiftUI
                 .ignoresSafeArea()
                 .glassToolbarOverlay {
                     // Accessory picker above the toolbar (melted effect)
-                    GlassToolbarItem(placement: .bottomAccessory(offset: -8)) {
+                    GlassToolbarItem(placement: .bottomAccessory(offset: 24)) {
                         ToolbarMenuPicker(
                             selection: $selectedVehicle,
                             options: vehicles
                         ) { vehicle in
                             Text(vehicle)
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: .capsule)
                     }
+                    .toolbarDensity(.extraDense)
 
                     // Main tabs
                     GlassToolbarItemGroup(placement: .bottomPrimary) {
@@ -146,7 +144,6 @@ import SwiftUI
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .background(.ultraThinMaterial, in: .capsule)
                     }
 
                     // Main tabs
@@ -252,6 +249,7 @@ import SwiftUI
                     }
                 }
             }
+            .animation(.interactiveSpring, value: isEditing)
         }
     }
     return Preview()

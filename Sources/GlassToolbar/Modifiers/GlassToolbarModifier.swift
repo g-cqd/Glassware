@@ -28,6 +28,15 @@ struct GlassToolbarModifier: ViewModifier {
     let edge: ToolbarEdge
     let glass: Glass
 
+    @Environment(\.toolbarDensity) private var density
+
+    /// Namespace for glass effect grouping.
+    @Namespace private var glassNamespace
+
+    private var metrics: ToolbarMetrics {
+        ToolbarMetrics(density: density)
+    }
+
     init(
         edge: ToolbarEdge,
         glass: Glass,
@@ -51,13 +60,17 @@ struct GlassToolbarModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .overlay(alignment: edge.overlayAlignment) {
-                ToolbarContainer(
-                    leadingItems: leadingItems,
-                    trailingItems: trailingItems,
-                    groups: groups,
-                    edge: edge,
-                    glass: glass
-                )
+                GlassEffectContainer(spacing: metrics.containerSpacing) {
+                    ToolbarContainer(
+                        leadingItems: leadingItems,
+                        trailingItems: trailingItems,
+                        groups: groups,
+                        edge: edge,
+                        glass: glass,
+                        glassNamespace: glassNamespace
+                    )
+                }
+                .environment(\.toolbarEdge, edge)
             }
     }
 }

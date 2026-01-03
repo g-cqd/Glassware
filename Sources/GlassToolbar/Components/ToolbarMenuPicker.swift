@@ -7,6 +7,21 @@
 
 import SwiftUI
 
+// MARK: - Menu Picker Display Mode
+
+/// Controls the visual presentation of a `ToolbarMenuPicker`.
+///
+/// - `.standard`: Full label with chevron indicator (default for multi-item containers)
+/// - `.compact`: Icon-only with chevron, suitable for edge placement or constrained space
+public enum MenuPickerDisplayMode: Sendable, Equatable {
+    /// Full label display with icon, title, and chevron indicator.
+    case standard
+
+    /// Compact display showing only icon and chevron.
+    /// Use when the picker is alone on a toolbar edge or in constrained space.
+    case compact
+}
+
 // MARK: - Toolbar Menu Picker
 
 /// A compact picker that displays a single value with chevron indicator,
@@ -37,15 +52,72 @@ import SwiftUI
 ///     Label(tab.title, systemImage: tab.icon)
 /// }
 /// ```
+///
+/// ## Compact Mode
+/// Use `.compact` display mode when the picker appears alone on a toolbar edge:
+/// ```swift
+/// ToolbarMenuPicker(
+///     selection: $selectedTab,
+///     options: Tab.allCases,
+///     displayMode: .compact
+/// ) { tab in
+///     Label(tab.title, systemImage: tab.icon)
+/// }
+/// ```
 public struct ToolbarMenuPicker<Value: Hashable, Label: View, Option: View>: View {
     // MARK: - Properties
 
     @Binding var selection: Value
     let options: [Value]
+    let displayMode: MenuPickerDisplayMode
     let label: (Value) -> Label
     let optionLabel: (Value) -> Option
 
     @Environment(\.toolbarDensity) private var density
+    @Environment(\.toolbarEdge) private var toolbarEdge
+    @Environment(\.toolbarContainerContext) private var containerContext
+
+    /// Effective display mode, accounting for vertical edge placement.
+    ///
+    /// When on a vertical edge (leading/trailing) and alone in container,
+    /// automatically uses compact mode regardless of configured mode.
+    private var effectiveDisplayMode: MenuPickerDisplayMode {
+        if toolbarEdge.isVertical, containerContext.isSingleItem {
+            .compact
+        } else {
+            displayMode
+        }
+    }
+
+    /// Chevron font scaled appropriately for visual balance.
+    private var chevronFont: Font {
+        switch density {
+        case .extraSparse, .sparse:
+            .footnote.weight(.medium)
+        case .regular, .compact:
+            .caption.weight(.medium)
+        case .dense, .extraDense:
+            .caption2.weight(.medium)
+        }
+    }
+
+    /// Spacing between label and chevron, density-aware.
+    private var labelChevronSpacing: CGFloat {
+        switch density {
+        case .extraSparse, .sparse: 8
+        case .regular: 6
+        case .compact, .dense, .extraDense: 5
+        }
+    }
+
+    /// Additional horizontal padding for picker content, density-aware.
+    private var pickerHorizontalPadding: CGFloat {
+        switch density {
+        case .extraSparse, .sparse: 6
+        case .regular, .compact: 4
+        case .dense, .extraDense: 2
+        }
+    }
 
     // MARK: - Initializers
 
@@ -54,16 +126,19 @@ public struct ToolbarMenuPicker<Value: Hashable, Label: View, Option: View>: Vie
     /// - Parameters:
     ///   - selection: A binding to the selected value.
     ///   - options: An array of available options.
+    ///   - displayMode: The visual presentation mode. Default is `.standard`.
     ///   - label: A view builder for the compact display label.
     ///   - optionLabel: A view builder for each menu option.
     public init(
         selection: Binding<Value>,
         options: [Value],
+        displayMode: MenuPickerDisplayMode = .standard,
         @ViewBuilder label: @escaping (Value) -> Label,
         @ViewBuilder optionLabel: @escaping (Value) -> Option
     ) {
         self._selection = selection
         self.options = options
+        self.displayMode = displayMode
         self.label = label
         self.optionLabel = optionLabel
     }
@@ -80,14 +155,38 @@ public struct ToolbarMenuPicker<Value: Hashable, Label: View, Option: View>: Vie
                 }
             }
         } label: {
-            HStack(spacing: 4) {
-                label(selection)
+            HStack(spacing: labelChevronSpacing) {
+                labelContent
                 Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(chevronFont)
+                    .foregroundStyle(.tertiary)
             }
+            .padding(.horizontal, pickerHorizontalPadding)
         }
-        .buttonStyle(.toolbarItem(intent: .action, style: .titleOnly))
+        .buttonStyle(.toolbarItem(intent: .action, style: buttonStyle))
+    }
+
+    // MARK: - Private Views
+
+    @ViewBuilder
+    private var labelContent: some View {
+        switch effectiveDisplayMode {
+        case .standard:
+            label(selection)
+        case .compact:
+            label(selection)
+                .labelStyle(.iconOnly)
+        }
+    }
+
+    /// Button style based on effective display mode.
+    private var buttonStyle: ToolbarItemVisualStyle {
+        switch effectiveDisplayMode {
+        case .standard:
+            .titleOnly
+        case .compact:
+            .iconOnly()
+        }
     }
 }
 
@@ -99,14 +198,17 @@ extension ToolbarMenuPicker where Label == Option {
     /// - Parameters:
     ///   - selection: A binding to the selected value.
     ///   - options: An array of available options.
+    ///   - displayMode: The visual presentation mode. Default is `.standard`.
     ///   - label: A view builder for both the compact display and menu options.
     public init(
         selection: Binding<Value>,
         options: [Value],
+        displayMode: MenuPickerDisplayMode = .standard,
         @ViewBuilder label: @escaping (Value) -> Label
     ) {
         self._selection = selection
         self.options = options
+        self.displayMode = displayMode
         self.label = label
         self.optionLabel = label
     }
@@ -118,12 +220,15 @@ extension ToolbarMenuPicker where Value: CustomStringConvertible, Label == Text,
     /// - Parameters:
     ///   - selection: A binding to the selected value.
     ///   - options: An array of available options.
+    ///   - displayMode: The visual presentation mode. Default is `.standard`.
     public init(
         selection: Binding<Value>,
-        options: [Value]
+        options: [Value],
+        displayMode: MenuPickerDisplayMode = .standard
     ) {
         self._selection = selection
         self.options = options
+        self.displayMode = displayMode
         self.label = { Text($0.description) }
         self.optionLabel = { Text($0.description) }
     }
@@ -156,7 +261,7 @@ private enum MenuPickerOption: String, CaseIterable, Hashable, CustomStringConve
                 Spacer()
                 ToolbarMenuPicker(selection: $selection, options: MenuPickerOption.allCases)
                     .padding()
-                    .background(.ultraThinMaterial, in: .capsule)
+
                 Text("Selected: \(selection.description)")
                     .font(.caption)
                 Spacer()
@@ -180,7 +285,7 @@ private enum MenuPickerOption: String, CaseIterable, Hashable, CustomStringConve
                     Label(tab.description, systemImage: tab.icon)
                 }
                 .padding()
-                .background(.ultraThinMaterial, in: .capsule)
+
                 Text("Selected: \(selection.description)")
                     .font(.caption)
                 Spacer()
@@ -242,7 +347,7 @@ private enum MenuPickerOption: String, CaseIterable, Hashable, CustomStringConve
                         }
                         .toolbarDensity(density)
                         .padding()
-                        .background(.ultraThinMaterial, in: .capsule)
+
                     }
                 }
             }
@@ -258,6 +363,86 @@ private enum MenuPickerOption: String, CaseIterable, Hashable, CustomStringConve
             case .dense: "Dense"
             case .extraDense: "Extra Dense"
             }
+        }
+    }
+    return Preview()
+}
+
+#Preview("Display Modes") {
+    struct Preview: View {
+        @State private var selection: MenuPickerOption = .home
+
+        var body: some View {
+            VStack(spacing: 32) {
+                VStack(spacing: 8) {
+                    Text("Standard Mode")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    ToolbarMenuPicker(
+                        selection: $selection,
+                        options: MenuPickerOption.allCases,
+                        displayMode: .standard
+                    ) { tab in
+                        Label(tab.description, systemImage: tab.icon)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.primary.opacity(0.08), in: .capsule)
+                }
+
+                VStack(spacing: 8) {
+                    Text("Compact Mode")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    ToolbarMenuPicker(
+                        selection: $selection,
+                        options: MenuPickerOption.allCases,
+                        displayMode: .compact
+                    ) { tab in
+                        Label(tab.description, systemImage: tab.icon)
+                    }
+                    .padding(10)
+                    .background(Color.primary.opacity(0.08), in: .circle)
+                }
+
+                Text("Selected: \(selection.description)")
+                    .font(.subheadline)
+            }
+            .padding()
+        }
+    }
+    return Preview()
+}
+
+#Preview("Compact on Edge") {
+    struct Preview: View {
+        @State private var selection: MenuPickerOption = .home
+        @State private var selectedTab: Int = 0
+
+        var body: some View {
+            Color.blue.opacity(0.05)
+                .ignoresSafeArea()
+                .glassToolbar(
+                    leading: {
+                        ToolbarMenuPicker(
+                            selection: $selection,
+                            options: MenuPickerOption.allCases,
+                            displayMode: .compact
+                        ) { tab in
+                            Label(tab.description, systemImage: tab.icon)
+                        }
+                    },
+                    content: {
+                        ForEach(0..<3, id: \.self) { index in
+                            Button {
+                                selectedTab = index
+                            } label: {
+                                Label("Tab \(index)", systemImage: "circle")
+                            }
+                            .buttonStyle(.toolbarItem(isSelected: selectedTab == index))
+                        }
+                    }
+                )
         }
     }
     return Preview()

@@ -25,7 +25,7 @@ private struct DynamicTypePreview: View {
             }
         }
         .padding(3)
-        .background(.ultraThinMaterial, in: .capsule)
+
     }
 }
 
@@ -163,7 +163,7 @@ private struct ColorContrastPreview: View {
                     Label("Action", systemImage: "plus")
                 }
                 .buttonStyle(.toolbarItem(intent: .action, style: .iconOnly()))
-                .background(.ultraThinMaterial, in: .circle)
+
             }
 
             PreviewSection(title: "Disabled State") {
@@ -172,7 +172,7 @@ private struct ColorContrastPreview: View {
                 }
                 .buttonStyle(.toolbarItem(style: .iconOnly()))
                 .disabled(true)
-                .background(.ultraThinMaterial, in: .circle)
+
             }
         }
         .padding()
@@ -185,7 +185,7 @@ private struct ColorContrastPreview: View {
                 Label("Tab", systemImage: "house")
             }
             .buttonStyle(.toolbarItem(isSelected: isSelected))
-            .background(.ultraThinMaterial, in: .capsule)
+
 
             Text(title)
                 .font(.caption)
@@ -311,22 +311,100 @@ private struct VoiceOverPreview: View {
 }
 
 #Preview("Reduced Motion") {
-    VStack(spacing: 24) {
-        PreviewSection(title: "With Animation") {
-            DynamicTypePreview()
-        }
+    ReducedMotionDemoPreview()
+}
 
-        PreviewSection(title: "Reduced Motion (simulated)") {
-            // Note: accessibilityReduceMotion is read-only
-            // In real testing, enable Reduce Motion in Settings
-            DynamicTypePreview()
-        }
+// MARK: - Reduced Motion Demo
 
-        Text("Enable Reduce Motion in Settings to test")
-            .font(.caption)
-            .foregroundStyle(.tertiary)
+/// Demonstrates how components behave with reduced motion.
+private struct ReducedMotionDemoPreview: View {
+    @State private var selectedTab: PreviewTab = .home
+    @State private var pickerSelection: PreviewTab = .home
+    @State private var simulateReducedMotion = false
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Toggle("Simulate Reduced Motion", isOn: $simulateReducedMotion)
+                .padding(.horizontal)
+
+            PreviewSection(title: "Tab Selection") {
+                HStack(spacing: 0) {
+                    ForEach(PreviewTab.allCases, id: \.rawValue) { tab in
+                        Button {
+                            if simulateReducedMotion {
+                                // Instant update without animation
+                                selectedTab = tab
+                            } else {
+                                withAnimation(.snappy) {
+                                    selectedTab = tab
+                                }
+                            }
+                        } label: {
+                            Label(tab.title, systemImage: tab.systemImage)
+                        }
+                        .buttonStyle(.toolbarItem(isSelected: selectedTab == tab))
+                    }
+                }
+                .padding(3)
+
+            }
+
+            PreviewSection(title: "Segmented Picker") {
+                SegmentedPicker(selection: $pickerSelection, style: .iconOnly) {
+                    ForEach(PreviewTab.allCases, id: \.rawValue) { tab in
+                        SegmentedPickerItem(
+                            tab,
+                            systemImage: tab.systemImage,
+                            style: .iconOnly,
+                            isSelected: pickerSelection == tab
+                        ) {
+                            Text(tab.title)
+                        }
+                    }
+                }
+                .padding(3)
+
+                // Note: SegmentedPicker reads @Environment(\.accessibilityReduceMotion)
+            }
+
+            VStack(spacing: 8) {
+                Text("When Reduce Motion is enabled:")
+                    .font(.subheadline.weight(.medium))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    BulletPoint("Selection changes instantly (no spring)")
+                    BulletPoint("Drag gestures update without animation")
+                    BulletPoint("Capsule snaps to position")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(.background.secondary, in: .rect(cornerRadius: 12))
+
+            Text("Enable Reduce Motion in Settings > Accessibility > Motion")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
     }
-    .padding()
+}
+
+/// Simple bullet point view for lists.
+private struct BulletPoint: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text("\u{2022}")
+            Text(text)
+        }
+    }
 }
 
 #Preview("Full Accessibility Audit") {

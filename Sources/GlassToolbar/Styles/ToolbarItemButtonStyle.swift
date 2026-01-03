@@ -66,6 +66,13 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
     @Environment(\.toolbarDensity) private var density
     @Environment(\.toolbarContainerNamespace) private var namespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.toolbarForcedVisualStyle) private var forcedVisualStyle
+    @Environment(\.toolbarContainerContext) private var containerContext
+
+    /// The effective visual style, accounting for any forced override.
+    private var effectiveVisualStyle: ToolbarItemVisualStyle {
+        forcedVisualStyle ?? visualStyle
+    }
 
     /// Base sizes that scale with Dynamic Type.
     @ScaledMetric(relativeTo: .body) private var baseMinWidth: CGFloat = 64
@@ -96,7 +103,7 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
 
     /// Image scale based on density and visual style.
     private var imageScale: Image.Scale {
-        if visualStyle.isIconOnly {
+        if effectiveVisualStyle.isIconOnly {
             // Icon-only gets larger icons since there's no label text
             switch density {
             case .extraSparse, .sparse, .regular, .compact: .large
@@ -133,8 +140,8 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
             .imageScale(imageScale)
             .foregroundStyle(foregroundColor(isPressed: configuration.isPressed))
             .frame(
-                minWidth: visualStyle.isIconOnly ? scaledSize : scaledMinWidth,
-                minHeight: visualStyle.isIconOnly ? scaledSize : scaledMinHeight
+                minWidth: effectiveVisualStyle.isIconOnly ? scaledSize : scaledMinWidth,
+                minHeight: effectiveVisualStyle.isIconOnly ? scaledSize : scaledMinHeight
             )
             .padding(.vertical, metrics.componentPadding)
             .padding(.horizontal, horizontalPadding)
@@ -148,11 +155,15 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
                 newValue
             }
             .animation(selectionAnimation, value: isSelected)
+            .animation(
+                reduceMotion ? nil : .easeOut(duration: ToolbarTokens.Animation.pressDuration),
+                value: configuration.isPressed
+            )
     }
 
-    /// Horizontal padding, slightly larger for text-containing styles.
+    /// Horizontal padding, slightly larger for text-containing styles on horizontal edges.
     private var horizontalPadding: CGFloat {
-        if visualStyle.isIconOnly {
+        if effectiveVisualStyle.isIconOnly || containerContext.isVerticalEdge {
             return metrics.componentPadding
         } else {
             // Increase horizontal padding for titleOnly and titleAndIcon styles
@@ -179,7 +190,7 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
 
     @ViewBuilder
     private func labelContent(configuration: Configuration) -> some View {
-        switch visualStyle {
+        switch effectiveVisualStyle {
         case .titleAndIcon(let image, let systemImage):
             if let systemImage {
                 // Custom system image with label's title
@@ -230,25 +241,32 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
 
     @ViewBuilder
     private func backgroundView(isPressed: Bool) -> some View {
-        let shape: AnyShape = visualStyle.isIconOnly ? AnyShape(.circle) : AnyShape(.capsule)
-
-        let background = SelectionBackground(shape: shape)
-
         switch intent {
         case .tab:
             // Tab: show selection indicator with matchedGeometryEffect
             if isSelected, let namespace {
-                background.matchedGeometryEffect(id: "tabSelection", in: namespace)
+                selectionThumb
+                    .matchedGeometryEffect(id: "tabSelection", in: namespace)
             }
 
         case .action:
-            background
+            selectionThumb
                 .opacity(isPressed ? 1 : 0)
                 .scaleEffect(isPressed ? 1.0 : ToolbarTokens.Animation.pressedScale)
                 .animation(
                     reduceMotion ? nil : .interactiveSpring(duration: ToolbarTokens.Animation.pressDuration),
                     value: isPressed
                 )
+        }
+    }
+
+    /// Creates the appropriate selection thumb shape based on visual style and container context.
+    @ViewBuilder
+    private var selectionThumb: some View {
+        if effectiveVisualStyle.isIconOnly && containerContext.isSingleItem {
+            SelectionThumb(shape: Circle())
+        } else {
+            SelectionThumb(shape: Capsule())
         }
     }
 
@@ -278,24 +296,6 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
                 return isPressed ? .primary.opacity(ToolbarTokens.Opacity.pressedTab) : .secondary
             }
         }
-    }
-}
-
-// MARK: - Selection Background
-
-/// Reusable background view for selection indicators.
-private struct SelectionBackground: View {
-    let shape: AnyShape
-
-    var body: some View {
-        Color.primary.inverted.opacity(ToolbarTokens.Opacity.backgroundFill)
-            .clipShape(shape)
-            .overlay {
-                shape
-                    .fill(.clear)
-                    .stroke(Color.primary.inverted.opacity(ToolbarTokens.Opacity.borderStroke), lineWidth: ToolbarTokens.Border.lineWidth)
-            }
-            .shadow(color: .black.opacity(ToolbarTokens.Shadow.opacity), radius: ToolbarTokens.Shadow.radius)
     }
 }
 

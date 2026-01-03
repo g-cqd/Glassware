@@ -31,7 +31,11 @@ private struct EdgePreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.toolbarItem(isSelected: selectedTab == tab))
+                        .buttonStyle(
+                            .toolbarItem(
+                                isSelected: selectedTab == tab
+                            )
+                        )
                     }
                 },
                 trailing: {
@@ -46,7 +50,7 @@ private struct EdgePreview: View {
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(.ultraThinMaterial, in: .capsule)
+
             }
     }
 
@@ -115,7 +119,7 @@ private struct AllEdgesComparisonView: View {
                 .buttonStyle(.toolbarItem(intent: .action, style: .iconOnly()))
             }
             .padding(3)
-            .background(.ultraThinMaterial, in: .capsule)
+
         }
     }
 
@@ -150,7 +154,7 @@ private struct AllEdgesComparisonView: View {
             }
             .padding(3)
             .frame(height: 200)
-            .background(.ultraThinMaterial, in: .capsule)
+
         }
     }
 }

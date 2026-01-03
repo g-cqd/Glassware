@@ -181,6 +181,8 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
 
     @Environment(\.toolbarDensity) private var density
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.toolbarEdge) private var toolbarEdge
+    @Environment(\.toolbarContainerContext) private var containerContext
 
     public init(
         selection: Binding<Value>,
@@ -198,6 +200,24 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
         ToolbarMetrics(density: density)
     }
 
+    /// Effective axis, accounting for vertical toolbar edge placement.
+    ///
+    /// When on a vertical edge (leading/trailing), automatically uses vertical axis.
+    private var effectiveAxis: SegmentedPickerAxis {
+        toolbarEdge.isVertical ? .vertical : axis
+    }
+
+    /// Effective style, accounting for vertical toolbar edge placement.
+    ///
+    /// When on a vertical edge, defaults to iconOnly for compactness.
+    private var effectiveStyle: SegmentedPickerStyle {
+        if toolbarEdge.isVertical {
+            .iconOnly
+        } else {
+            style
+        }
+    }
+
     /// The frame of the currently selected item.
     private var selectedFrame: CGRect? {
         itemFrames[selection]
@@ -213,7 +233,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
             return 0...0
         }
 
-        if axis == .horizontal {
+        if effectiveAxis == .horizontal {
             let minOffset = firstFrame.minX - selectedFrame.minX
             let maxOffset = lastFrame.minX - selectedFrame.minX
             return minOffset...maxOffset
@@ -229,7 +249,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
         guard isDragging, let selectedFrame else { return nil }
 
         let thumbPosition: CGFloat
-        if axis == .horizontal {
+        if effectiveAxis == .horizontal {
             thumbPosition = selectedFrame.midX + dragOffset
         } else {
             thumbPosition = selectedFrame.midY + dragOffset
@@ -240,7 +260,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
         var closestDistance: CGFloat = .infinity
 
         for (value, frame) in itemFrames {
-            let itemCenter = axis == .horizontal ? frame.midX : frame.midY
+            let itemCenter = effectiveAxis == .horizontal ? frame.midX : frame.midY
             let distance = abs(itemCenter - thumbPosition)
             if distance < closestDistance {
                 closestDistance = distance
@@ -253,7 +273,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
 
     public var body: some View {
         Group {
-            if axis == .horizontal {
+            if effectiveAxis == .horizontal {
                 HStack(spacing: 0) {
                     content()
                 }
@@ -268,8 +288,8 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
         .coordinateSpace(name: "picker")
         .onPreferenceChange(SegmentedPickerItemFramePreference<Value>.self) { frames in
             itemFrames = frames
-            // Cache sorted values based on axis
-            if axis == .horizontal {
+            // Cache sorted values based on effective axis
+            if effectiveAxis == .horizontal {
                 cachedSortedValues = frames.sorted { $0.value.minX < $1.value.minX }.map(\.key)
             } else {
                 cachedSortedValues = frames.sorted { $0.value.minY < $1.value.minY }.map(\.key)
@@ -326,31 +346,29 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
 
     @ViewBuilder
     private func selectionCapsule(for frame: CGRect) -> some View {
-        let shape: AnyShape = style == .iconOnly ? AnyShape(.circle) : AnyShape(.capsule)
         let clampedOffset = dragOffset.clamped(to: dragBounds)
 
-        Color.primary.inverted.opacity(ToolbarTokens.Opacity.backgroundFill)
-            .frame(width: frame.width, height: frame.height)
-            .clipShape(shape)
-            .overlay {
-                shape
-                    .fill(.clear)
-                    .stroke(Color.primary.inverted.opacity(ToolbarTokens.Opacity.borderStroke), lineWidth: ToolbarTokens.Border.lineWidth)
+        Group {
+            if effectiveStyle == .iconOnly {
+                SelectionThumb(shape: Circle())
+            } else {
+                SelectionThumb(shape: Capsule())
             }
-            .shadow(color: .black.opacity(ToolbarTokens.Shadow.opacity), radius: ToolbarTokens.Shadow.radius)
-            .offset(
-                x: axis == .horizontal ? frame.minX + clampedOffset : frame.minX,
-                y: axis == .vertical ? frame.minY + clampedOffset : frame.minY
-            )
-            .gesture(dragGesture)
-            .animation(
-                reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
-                value: selection
-            )
-            .animation(
-                reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
-                value: dragOffset
-            )
+        }
+        .frame(width: frame.width, height: frame.height)
+        .offset(
+            x: effectiveAxis == .horizontal ? frame.minX + clampedOffset : frame.minX,
+            y: effectiveAxis == .vertical ? frame.minY + clampedOffset : frame.minY
+        )
+        .gesture(dragGesture)
+        .animation(
+            reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
+            value: selection
+        )
+        .animation(
+            reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
+            value: dragOffset
+        )
     }
 
     // MARK: - Drag Gesture
@@ -359,7 +377,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
         DragGesture()
             .onChanged { value in
                 isDragging = true
-                let translation = axis == .horizontal ? value.translation.width : value.translation.height
+                let translation = effectiveAxis == .horizontal ? value.translation.width : value.translation.height
                 dragOffset = translation.clamped(to: dragBounds)
             }
             .onEnded { value in
@@ -370,10 +388,10 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
                 }
 
                 // Calculate where the capsule ended up
-                let translation = axis == .horizontal ? value.translation.width : value.translation.height
+                let translation = effectiveAxis == .horizontal ? value.translation.width : value.translation.height
                 let clampedTranslation = translation.clamped(to: dragBounds)
                 let endPosition: CGFloat
-                if axis == .horizontal {
+                if effectiveAxis == .horizontal {
                     endPosition = currentFrame.midX + clampedTranslation
                 } else {
                     endPosition = currentFrame.midY + clampedTranslation
@@ -384,7 +402,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
                 var closestDistance: CGFloat = .infinity
 
                 for (itemValue, itemFrame) in itemFrames {
-                    let itemCenter = axis == .horizontal ? itemFrame.midX : itemFrame.midY
+                    let itemCenter = effectiveAxis == .horizontal ? itemFrame.midX : itemFrame.midY
                     let distance = abs(itemCenter - endPosition)
                     if distance < closestDistance {
                         closestDistance = distance

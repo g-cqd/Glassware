@@ -113,7 +113,7 @@ struct DensityBadge: View {
             .font(.caption2.weight(.medium))
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(.ultraThinMaterial, in: .capsule)
+
     }
 
     private var densityName: String {
@@ -217,7 +217,7 @@ struct ButtonStyleGrid: View {
                 Label("Home", systemImage: "house")
             }
             .buttonStyle(.toolbarItem(intent: intent, style: style, isSelected: isSelected))
-            .background(.ultraThinMaterial, in: .rect(cornerRadius: 8))
+
 
             Text(isSelected ? "Selected" : "Default")
                 .font(.caption2)

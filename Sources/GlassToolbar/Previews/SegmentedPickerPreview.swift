@@ -59,7 +59,7 @@ private struct InteractivePickerPreview: View {
                 }
             }
             .padding(3)
-            .background(.ultraThinMaterial, in: .capsule)
+
 
             Text("Tap or drag to select")
                 .font(.caption)
@@ -94,7 +94,7 @@ private struct PickerStyleComparisonView: View {
                     }
                 }
                 .padding(3)
-                .background(.ultraThinMaterial, in: .capsule)
+
             }
 
             // Title Only
@@ -112,7 +112,7 @@ private struct PickerStyleComparisonView: View {
                     }
                 }
                 .padding(3)
-                .background(.ultraThinMaterial, in: .capsule)
+
             }
 
             // Title and Icon
@@ -130,7 +130,7 @@ private struct PickerStyleComparisonView: View {
                     }
                 }
                 .padding(3)
-                .background(.ultraThinMaterial, in: .capsule)
+
             }
         }
         .padding()
@@ -205,7 +205,7 @@ private struct PickerDensityPreview: View {
                         }
                     }
                     .padding(3)
-                    .background(.ultraThinMaterial, in: .capsule)
+
                     .toolbarDensity(density)
                 }
             }
@@ -294,7 +294,7 @@ private struct VerticalPickerPreview: View {
                 }
             }
             .padding(3)
-            .background(.ultraThinMaterial, in: .capsule)
+
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Vertical Picker")
@@ -331,7 +331,7 @@ private struct AxisComparisonView: View {
                     }
                 }
                 .padding(3)
-                .background(.ultraThinMaterial, in: .capsule)
+
             }
 
             PreviewSection(title: "Vertical Axis") {
@@ -349,7 +349,7 @@ private struct AxisComparisonView: View {
                         }
                     }
                     .padding(3)
-                    .background(.ultraThinMaterial, in: .capsule)
+
 
                     Spacer()
                 }
@@ -411,7 +411,7 @@ private struct VerticalStyleComparisonView: View {
                     }
                 }
                 .padding(3)
-                .background(.ultraThinMaterial, in: .capsule)
+
             }
 
             VStack(spacing: 8) {
@@ -432,7 +432,7 @@ private struct VerticalStyleComparisonView: View {
                     }
                 }
                 .padding(3)
-                .background(.ultraThinMaterial, in: .capsule)
+
             }
 
             VStack(spacing: 8) {
@@ -453,7 +453,7 @@ private struct VerticalStyleComparisonView: View {
                     }
                 }
                 .padding(3)
-                .background(.ultraThinMaterial, in: .capsule)
+
             }
         }
         .padding()

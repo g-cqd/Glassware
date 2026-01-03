@@ -49,12 +49,22 @@ import SwiftUI
 // Tokens:
 // - ToolbarTokens
 //
+// Collapse/Fusion:
+// - ToolbarMergeSide
+// - ToolbarCollapseState
+// - ToolbarCollapseConfiguration
+// - ToolbarHeightReport
+//
 // View Extensions:
 // - View.glassToolbar(edge:glass:leading:content:trailing:)
 // - View.glassToolbarOverlay(glass:content:)
 // - View.toolbarDensity(_:)
 // - View.toolbarPadding(_:)
 // - View.toolbarDistribution(_:)
+// - View.trackScrollOffset(_:)
+// - View.toolbarCollapseEnabled(configuration:scrollOffset:)
+// - View.toolbarCollapseConfiguration(_:)
+// - View.glassToolbarContentPadding()
 //
 // Button Style Extensions:
 // - ButtonStyle.toolbarItem(intent:style:isSelected:)

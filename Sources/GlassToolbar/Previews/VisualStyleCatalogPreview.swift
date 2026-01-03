@@ -48,7 +48,7 @@ private struct VisualStyleComparisonView: View {
             }
         }
         .padding(3)
-        .background(.ultraThinMaterial, in: .capsule)
+
     }
 }
 
@@ -90,7 +90,7 @@ private struct FullToolbarStylePreview: View {
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(.ultraThinMaterial, in: .capsule)
+
                     .padding()
             }
     }
@@ -186,7 +186,7 @@ private struct ActionButtonStylesView: View {
                     .buttonStyle(.toolbarItem(intent: .tab, isSelected: false))
             }
             .padding(3)
-            .background(.ultraThinMaterial, in: .capsule)
+
         }
 
         PreviewSection(title: "Action Intent (Press Feedback)") {
@@ -224,4 +224,88 @@ private struct ActionButtonStylesView: View {
         }
     }
     .padding()
+}
+
+// MARK: - Dark Mode Previews
+
+#Preview("Dark Mode - Title and Icon") {
+    FullToolbarStylePreview(style: .titleAndIcon())
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Dark Mode - Icon Only") {
+    FullToolbarStylePreview(style: .iconOnly())
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Light vs Dark Comparison") {
+    VStack(spacing: 0) {
+        FullToolbarStylePreview(style: .titleAndIcon())
+            .preferredColorScheme(.light)
+            .frame(height: 300)
+
+        Divider()
+
+        FullToolbarStylePreview(style: .titleAndIcon())
+            .preferredColorScheme(.dark)
+            .frame(height: 300)
+    }
+}
+
+#Preview("Glass Material - Light") {
+    GlassMaterialComparisonPreview()
+        .preferredColorScheme(.light)
+}
+
+#Preview("Glass Material - Dark") {
+    GlassMaterialComparisonPreview()
+        .preferredColorScheme(.dark)
+}
+
+// MARK: - Glass Material Comparison
+
+/// Shows how glass material appears on different backgrounds.
+private struct GlassMaterialComparisonPreview: View {
+    @State private var selectedTab: PreviewTab = .home
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Light background
+            backgroundSection(color: .white, title: "Light Background")
+
+            // Dark background
+            backgroundSection(color: .black, title: "Dark Background")
+
+            // Colorful background
+            backgroundSection(color: .blue, title: "Colorful Background")
+        }
+    }
+
+    @ViewBuilder
+    private func backgroundSection(color: Color, title: String) -> some View {
+        ZStack(alignment: .bottom) {
+            color.ignoresSafeArea()
+
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(color == .white ? .black : .white)
+
+                HStack(spacing: 0) {
+                    ForEach(PreviewTab.allCases, id: \.rawValue) { tab in
+                        Button {
+                            selectedTab = tab
+                        } label: {
+                            Label(tab.title, systemImage: tab.systemImage)
+                        }
+                        .buttonStyle(.toolbarItem(isSelected: selectedTab == tab))
+                    }
+                }
+                .padding(3)
+
+            }
+            .padding(.bottom, 24)
+        }
+        .frame(height: 120)
+    }
 }

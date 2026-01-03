@@ -60,7 +60,7 @@ private struct BasicMenuPickerPreview: View {
             )
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(.ultraThinMaterial, in: .capsule)
+
 
             VStack(spacing: 4) {
                 Text("Selected: \(selection.description)")
@@ -93,7 +93,7 @@ private struct LabeledMenuPickerPreview: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(.ultraThinMaterial, in: .capsule)
+
 
             Text("Selected: \(selection.description)")
                 .font(.subheadline)
@@ -128,7 +128,7 @@ private struct DualLabelMenuPickerPreview: View {
             )
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(.ultraThinMaterial, in: .capsule)
+
 
             VStack(spacing: 4) {
                 Text("Selected: \(selection.displayName)")
@@ -203,7 +203,7 @@ private struct MenuPickerDensityPreview: View {
                     .toolbarDensity(density)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: .capsule)
+
                 }
             }
         }
@@ -241,7 +241,7 @@ private struct MenuPickerAccessoryPreview: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: .capsule)
+
                 }
 
                 GlassToolbarItemGroup(placement: .bottomPrimary) {
@@ -278,7 +278,7 @@ private struct MultipleMenuPickersPreview: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(.ultraThinMaterial, in: .capsule)
+
                 }
 
                 GlassToolbarItem(placement: .topTrailing) {
@@ -290,7 +290,7 @@ private struct MultipleMenuPickersPreview: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(.ultraThinMaterial, in: .capsule)
+
                 }
 
                 GlassToolbarItemGroup(placement: .bottomPrimary) {

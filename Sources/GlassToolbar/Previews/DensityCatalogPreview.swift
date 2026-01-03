@@ -45,7 +45,7 @@ private struct DensityPreviewRow: View {
                 }
             }
             .padding(metrics.containerPadding)
-            .background(.ultraThinMaterial, in: .capsule)
+
             .toolbarDensity(density)
         }
         .padding(.horizontal)
@@ -183,4 +183,29 @@ private func densityLabel(_ density: ToolbarDensity) -> String {
     case .dense: "Dense"
     case .extraDense: "Extra Dense"
     }
+}
+
+// MARK: - Dark Mode Previews
+
+#Preview("Dark Mode - Density Catalog") {
+    ScrollView {
+        VStack(spacing: 24) {
+            ForEach(ToolbarDensity.allCases, id: \.rawValue) { density in
+                DensityPreviewRow(density: density)
+            }
+        }
+        .padding(.vertical)
+    }
+    .background(.background)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Dark Mode - Regular Density") {
+    FullToolbarDensityPreview(density: .regular)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Dark Mode - Compact Density") {
+    FullToolbarDensityPreview(density: .compact)
+        .preferredColorScheme(.dark)
 }

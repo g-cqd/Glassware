@@ -45,8 +45,9 @@ struct ToolbarContainer: View {
     let edge: ToolbarEdge
     let glass: Glass
 
-    /// Namespace for glass effect grouping (separate from per-container selection namespace).
-    @Namespace private var glassNamespace
+    /// Namespace for glass effect grouping, shared with accessories.
+    /// Passed from EdgeToolbarContainer to ensure unified glass interaction.
+    let glassNamespace: Namespace.ID
 
     /// Tracks the cross-axis size for consistent container sizing.
     /// For horizontal edges (top/bottom), this is height.
@@ -63,10 +64,8 @@ struct ToolbarContainer: View {
     // MARK: - Body
 
     var body: some View {
-        GlassEffectContainer(spacing: metrics.containerSpacing) {
-            content
-        }
-        .onGeometryChange(
+        content
+            .onGeometryChange(
             for: CGFloat.self,
             of: { edge.isHorizontal ? $0.size.height : $0.size.width },
             action: { newSize in
@@ -252,9 +251,11 @@ struct ToolbarContainer: View {
 
     /// Creates glass container with placement environment and per-container namespace.
     ///
-    /// - Uses circular shape for single-item leading/trailing on horizontal edges
-    /// - Uses capsule shape for multi-item or primary containers
-    /// - Vertical edges (leading/trailing) constrain all containers to icon-only width
+    /// Shape selection rules:
+    /// - Single-item leading/trailing on horizontal edges: circle
+    /// - Single-item on vertical edges: circle (when icon-only fits)
+    /// - Multi-item containers: capsule
+    /// - Vertical edges use adaptive label style (tries user style, falls back to iconOnly)
     /// - Wraps content in NamespacedContainer for per-container matchedGeometryEffect
     @ViewBuilder
     private func container<Content: View>(
@@ -263,19 +264,12 @@ struct ToolbarContainer: View {
         @ViewBuilder _ content: () -> Content
     ) -> some View {
         let isSingleItem = itemCount == 1 && (placement == .leading || placement == .trailing)
-        let isAccessoryPosition = placement == .leading || placement == .trailing
+        let context = ToolbarContainerContext(itemCount: itemCount, isVerticalEdge: edge.isVertical)
         let builtContent = content()
-
-        // For vertical edges, all containers constrained to icon-only width
-        // For horizontal edges, only leading/trailing positions are constrained
-        let shouldConstrainToIconSize = edge.isVertical || isAccessoryPosition
-        let iconOnlySize = metrics.iconButtonSize + metrics.containerPadding * 2
 
         if isSingleItem && edge.isHorizontal {
             // Circular container for single items on horizontal edges
-            NamespacedContainer(placement: placement) { builtContent }
-                .frame(width: metrics.iconButtonSize, height: metrics.iconButtonSize)
-                .clipped()
+            NamespacedContainer(placement: placement, context: context) { builtContent }
                 .padding(metrics.containerPadding)
                 .frame(
                     minWidth: edge.isVertical ? crossAxisSize : nil,
@@ -283,21 +277,18 @@ struct ToolbarContainer: View {
                 )
                 .glassEffect(glass.interactive(), in: .circle)
         } else if edge.isVertical {
-            // Vertical edge: constrain width to icon-only, allow height to grow
-            NamespacedContainer(placement: placement) { builtContent }
-                .frame(maxWidth: metrics.iconButtonSize)
-                .clipped()
-                .padding(metrics.containerPadding)
-                .frame(minWidth: crossAxisSize)
-                .glassEffect(glass.interactive(), in: .capsule)
+            // Vertical edge: all items constrained to icon size for consistency
+            let shape: AnyShape = isSingleItem ? AnyShape(.circle) : AnyShape(.capsule)
+            NamespacedContainer(placement: placement, context: context) {
+                builtContent
+                    .environment(\.toolbarForcedVisualStyle, .iconOnly())
+            }
+            .padding(metrics.containerPadding)
+            .glassEffect(glass.interactive(), in: shape)
         } else {
             // Horizontal edge with multiple items or primary placement
-            NamespacedContainer(placement: placement) { builtContent }
+            NamespacedContainer(placement: placement, context: context) { builtContent }
                 .padding(metrics.containerPadding)
-                .frame(
-                    maxWidth: shouldConstrainToIconSize ? iconOnlySize : nil
-                )
-                .clipped()
                 .frame(minHeight: crossAxisSize)
                 .glassEffect(glass.interactive(), in: .capsule)
         }
@@ -310,15 +301,52 @@ struct ToolbarContainer: View {
 ///
 /// Each container gets its own namespace, ensuring that tab selection animations
 /// only occur between items within the same container, not across containers.
+/// Also passes container context (item count, edge info) for shape selection.
 private struct NamespacedContainer<Content: View>: View {
     @Namespace private var containerNamespace
     let placement: ToolbarButtonPlacement
+    let context: ToolbarContainerContext
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         content()
             .environment(\.toolbarButtonPlacement, placement)
             .environment(\.toolbarContainerNamespace, containerNamespace)
+            .environment(\.toolbarContainerContext, context)
+    }
+}
+
+// MARK: - Adaptive Label Container
+
+/// Container that progressively degrades visual style to fit within a maximum width.
+///
+/// Uses `ViewThatFits` to try the user's requested style first, then falls back
+/// to `.titleOnly`, and finally to `.iconOnly` if the content is still too wide.
+/// This ensures vertical edge toolbars remain narrow while respecting user intent
+/// when possible.
+///
+/// The style override is passed via `toolbarForcedVisualStyle` environment,
+/// which `ToolbarItemButtonStyle` reads to override its configured style.
+private struct AdaptiveLabelContainer<Content: View>: View {
+    let maxWidth: CGFloat
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            // First: try the content as-is (user's requested style, no override)
+            content()
+                .frame(maxWidth: maxWidth)
+
+            // Second: try with titleOnly
+            content()
+                .environment(\.toolbarForcedVisualStyle, .titleOnly)
+                .frame(maxWidth: maxWidth)
+
+            // Third: fall back to iconOnly (most compact)
+            content()
+                .environment(\.toolbarForcedVisualStyle, .iconOnly())
+                .frame(maxWidth: maxWidth)
+        }
     }
 }
 
