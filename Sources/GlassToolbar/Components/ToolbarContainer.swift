@@ -252,10 +252,9 @@ struct ToolbarContainer: View {
 
     /// Creates glass container with placement environment and per-container namespace.
     ///
-    /// - Uses circular shape for single-item leading/trailing
+    /// - Uses circular shape for single-item leading/trailing on horizontal edges
     /// - Uses capsule shape for multi-item or primary containers
-    /// - Applies consistent cross-axis sizing for visual alignment
-    /// - Leading/trailing containers are constrained to icon-only width and clipped
+    /// - Vertical edges (leading/trailing) constrain all containers to icon-only width
     /// - Wraps content in NamespacedContainer for per-container matchedGeometryEffect
     @ViewBuilder
     private func container<Content: View>(
@@ -264,20 +263,18 @@ struct ToolbarContainer: View {
         @ViewBuilder _ content: () -> Content
     ) -> some View {
         let isSingleItem = itemCount == 1 && (placement == .leading || placement == .trailing)
-        let isAccessoryPlacement = placement == .leading || placement == .trailing
+        let isAccessoryPosition = placement == .leading || placement == .trailing
         let builtContent = content()
 
-        // Leading/trailing containers constrained to icon-only size
-        // This ensures consistent sizing regardless of button style used
+        // For vertical edges, all containers constrained to icon-only width
+        // For horizontal edges, only leading/trailing positions are constrained
+        let shouldConstrainToIconSize = edge.isVertical || isAccessoryPosition
         let iconOnlySize = metrics.iconButtonSize + metrics.containerPadding * 2
 
-        if isSingleItem {
+        if isSingleItem && edge.isHorizontal {
+            // Circular container for single items on horizontal edges
             NamespacedContainer(placement: placement) { builtContent }
-                // Constrain content to icon size before padding
-                .frame(
-                    width: isAccessoryPlacement ? metrics.iconButtonSize : nil,
-                    height: isAccessoryPlacement ? metrics.iconButtonSize : nil
-                )
+                .frame(width: metrics.iconButtonSize, height: metrics.iconButtonSize)
                 .clipped()
                 .padding(metrics.containerPadding)
                 .frame(
@@ -285,18 +282,23 @@ struct ToolbarContainer: View {
                     minHeight: edge.isHorizontal ? crossAxisSize : nil
                 )
                 .glassEffect(glass.interactive(), in: .circle)
+        } else if edge.isVertical {
+            // Vertical edge: constrain width to icon-only, allow height to grow
+            NamespacedContainer(placement: placement) { builtContent }
+                .frame(maxWidth: metrics.iconButtonSize)
+                .clipped()
+                .padding(metrics.containerPadding)
+                .frame(minWidth: crossAxisSize)
+                .glassEffect(glass.interactive(), in: .capsule)
         } else {
+            // Horizontal edge with multiple items or primary placement
             NamespacedContainer(placement: placement) { builtContent }
                 .padding(metrics.containerPadding)
                 .frame(
-                    maxWidth: isAccessoryPlacement && edge.isHorizontal ? iconOnlySize : nil,
-                    maxHeight: isAccessoryPlacement && edge.isVertical ? iconOnlySize : nil
+                    maxWidth: shouldConstrainToIconSize ? iconOnlySize : nil
                 )
                 .clipped()
-                .frame(
-                    minWidth: edge.isVertical ? crossAxisSize : nil,
-                    minHeight: edge.isHorizontal ? crossAxisSize : nil
-                )
+                .frame(minHeight: crossAxisSize)
                 .glassEffect(glass.interactive(), in: .capsule)
         }
     }
