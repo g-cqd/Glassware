@@ -142,9 +142,12 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
             .fontDesign(.rounded)
             .imageScale(imageScale)
             .foregroundStyle(foregroundColor(isPressed: configuration.isPressed))
+            // Icon-only: fixed size for consistent touch targets
+            // Text buttons: flexible width, fixed height for touch targets
             .frame(
-                minWidth: effectiveVisualStyle.isIconOnly ? scaledSize : scaledMinWidth,
-                minHeight: effectiveVisualStyle.isIconOnly ? scaledSize : scaledMinHeight
+                minWidth: effectiveVisualStyle.isIconOnly ? scaledSize : nil,
+                idealWidth: effectiveVisualStyle.isIconOnly ? nil : scaledMinWidth,
+                minHeight: scaledMinHeight
             )
             .padding(.vertical, metrics.effectiveComponentPadding)
             .padding(.horizontal, effectiveHorizontalPadding)

@@ -91,8 +91,13 @@ public struct SegmentedPickerItem<Value: Hashable, Label: View>: View {
             .font(.body.weight(.medium))
             .fontDesign(.rounded)
             .foregroundStyle(appearsSelected ? .primary : .secondary)
-            .frame(minWidth: style == .iconOnly ? metrics.minimumTapTarget : metrics.primaryButtonMinWidth)
-            .frame(minHeight: metrics.minimumTapTarget)
+            // Icon-only: fixed size for touch targets
+            // Text items: flexible width allowing compression
+            .frame(
+                minWidth: style == .iconOnly ? metrics.minimumTapTarget : nil,
+                idealWidth: style == .iconOnly ? nil : metrics.primaryButtonMinWidth,
+                minHeight: metrics.minimumTapTarget
+            )
             .padding(metrics.effectiveComponentPadding)
             // Report frame to parent via preference key
             .background {
