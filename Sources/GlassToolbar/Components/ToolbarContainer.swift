@@ -255,7 +255,7 @@ struct ToolbarContainer: View {
     /// - Uses circular shape for single-item leading/trailing
     /// - Uses capsule shape for multi-item or primary containers
     /// - Applies consistent cross-axis sizing for visual alignment
-    /// - Leading/trailing containers are constrained to icon-only width
+    /// - Leading/trailing containers are constrained to icon-only width and clipped
     /// - Wraps content in NamespacedContainer for per-container matchedGeometryEffect
     @ViewBuilder
     private func container<Content: View>(
@@ -273,11 +273,13 @@ struct ToolbarContainer: View {
 
         if isSingleItem {
             NamespacedContainer(placement: placement) { builtContent }
-                .padding(metrics.containerPadding)
+                // Constrain content to icon size before padding
                 .frame(
-                    width: isAccessoryPlacement && edge.isHorizontal ? iconOnlySize : nil,
-                    height: isAccessoryPlacement && edge.isVertical ? iconOnlySize : nil
+                    width: isAccessoryPlacement ? metrics.iconButtonSize : nil,
+                    height: isAccessoryPlacement ? metrics.iconButtonSize : nil
                 )
+                .clipped()
+                .padding(metrics.containerPadding)
                 .frame(
                     minWidth: edge.isVertical ? crossAxisSize : nil,
                     minHeight: edge.isHorizontal ? crossAxisSize : nil
@@ -290,6 +292,7 @@ struct ToolbarContainer: View {
                     maxWidth: isAccessoryPlacement && edge.isHorizontal ? iconOnlySize : nil,
                     maxHeight: isAccessoryPlacement && edge.isVertical ? iconOnlySize : nil
                 )
+                .clipped()
                 .frame(
                     minWidth: edge.isVertical ? crossAxisSize : nil,
                     minHeight: edge.isHorizontal ? crossAxisSize : nil
