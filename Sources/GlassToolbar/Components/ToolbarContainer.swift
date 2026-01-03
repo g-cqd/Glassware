@@ -255,6 +255,7 @@ struct ToolbarContainer: View {
     /// - Uses circular shape for single-item leading/trailing
     /// - Uses capsule shape for multi-item or primary containers
     /// - Applies consistent cross-axis sizing for visual alignment
+    /// - Leading/trailing containers are constrained to icon-only width
     /// - Wraps content in NamespacedContainer for per-container matchedGeometryEffect
     @ViewBuilder
     private func container<Content: View>(
@@ -263,11 +264,20 @@ struct ToolbarContainer: View {
         @ViewBuilder _ content: () -> Content
     ) -> some View {
         let isSingleItem = itemCount == 1 && (placement == .leading || placement == .trailing)
+        let isAccessoryPlacement = placement == .leading || placement == .trailing
         let builtContent = content()
+
+        // Leading/trailing containers constrained to icon-only size
+        // This ensures consistent sizing regardless of button style used
+        let iconOnlySize = metrics.iconButtonSize + metrics.containerPadding * 2
 
         if isSingleItem {
             NamespacedContainer(placement: placement) { builtContent }
                 .padding(metrics.containerPadding)
+                .frame(
+                    width: isAccessoryPlacement && edge.isHorizontal ? iconOnlySize : nil,
+                    height: isAccessoryPlacement && edge.isVertical ? iconOnlySize : nil
+                )
                 .frame(
                     minWidth: edge.isVertical ? crossAxisSize : nil,
                     minHeight: edge.isHorizontal ? crossAxisSize : nil
@@ -276,6 +286,10 @@ struct ToolbarContainer: View {
         } else {
             NamespacedContainer(placement: placement) { builtContent }
                 .padding(metrics.containerPadding)
+                .frame(
+                    maxWidth: isAccessoryPlacement && edge.isHorizontal ? iconOnlySize : nil,
+                    maxHeight: isAccessoryPlacement && edge.isVertical ? iconOnlySize : nil
+                )
                 .frame(
                     minWidth: edge.isVertical ? crossAxisSize : nil,
                     minHeight: edge.isHorizontal ? crossAxisSize : nil
