@@ -1,0 +1,229 @@
+//
+//  GlassEnvironment.swift
+//  Glassware
+//
+//  Environment keys for glass toolbar configuration.
+//
+
+import SwiftUI
+
+// MARK: - Glass Button Placement
+
+/// Defines the placement context for glass buttons.
+///
+/// Performance note: Using enum with raw Int enables O(1) switch dispatch
+/// via jump table. Sendable conformance allows safe cross-actor usage.
+public enum GlassButtonPlacement: Int, Sendable, Equatable {
+    case leading = 0
+    case primary = 1
+    case trailing = 2
+}
+
+// MARK: - Environment Keys
+
+extension EnvironmentValues {
+    /// The placement context for glass buttons.
+    /// Set automatically by Glassware based on container position.
+    @Entry public var glassButtonPlacement: GlassButtonPlacement = .primary
+
+    /// The density level for the glass bar.
+    /// Affects both item sizing and spacing between items.
+    @Entry public var glassDensity: GlassDensity = .regular
+
+    /// The namespace for selection animation within a container.
+    /// Each container creates its own namespace to ensure matchedGeometryEffect
+    /// only animates between items in the same container.
+    @Entry public var glassContainerNamespace: Namespace.ID? = nil
+
+    /// Padding configuration for the glass bar.
+    /// Controls safe area handling and external margins.
+    @Entry public var glassPaddingConfiguration: GlassPaddingConfiguration = .default
+
+    /// Layout distribution for the glass bar.
+    /// Controls how containers distribute space when compartments are empty.
+    @Entry public var glassLayoutDistribution: GlassLayoutDistribution = .natural
+
+    /// Forced visual style override for glass items.
+    /// When set, buttons use this style instead of their configured style.
+    @Entry var glassForcedVisualStyle: GlassVisualStyle? = nil
+
+    /// The edge of the screen where the glass bar is positioned.
+    /// Set by the container for child components to adapt their layout.
+    @Entry public var glassEdge: GlassEdge = .bottom
+
+    /// Container context for glass items.
+    /// Provides information about siblings within the same container.
+    @Entry var glassContainerContext: GlassContainerContext = .default
+
+    /// Edge size context for adaptive sizing.
+    /// Set by EdgeGlassContainer based on edge, placement, and collapse state.
+    /// Components read this to determine appropriate sizing that matches native iOS patterns.
+    @Entry public var glassSizeContext: GlassEdgeContext? = nil
+}
+
+// MARK: - Toolbar Container Context
+
+/// Context information passed from container to child items.
+///
+/// This enables buttons to know their sibling count and adjust their shape accordingly:
+/// - Single icon-only button in a container uses circle shape
+/// - Multiple icon-only buttons in a container use capsule shape
+public struct GlassContainerContext: Sendable, Equatable {
+    /// Number of items in the container.
+    public let itemCount: Int
+
+    /// Whether this container is on a vertical edge (leading/trailing).
+    public let isVerticalEdge: Bool
+
+    /// Default context for standalone usage.
+    public static let `default` = GlassContainerContext(itemCount: 1, isVerticalEdge: false)
+
+    public init(itemCount: Int, isVerticalEdge: Bool) {
+        self.itemCount = itemCount
+        self.isVerticalEdge = isVerticalEdge
+    }
+
+    /// Whether the container has a single item.
+    public var isSingleItem: Bool {
+        itemCount == 1
+    }
+}
+
+// MARK: - Toolbar Height Report
+
+/// Reports the total rendered height for each toolbar edge.
+///
+/// Content views can read this to add appropriate padding or safe area insets
+/// to prevent overlap with floating toolbar overlays.
+///
+/// ## Usage
+/// ```swift
+/// @Environment(\.glassHeights) private var toolbarHeights
+///
+/// ScrollView {
+///     content
+/// }
+/// .safeAreaPadding(.bottom, toolbarHeights.bottom ?? 0)
+/// ```
+public struct GlassHeightReport: Sendable, Equatable {
+    /// Total height of the bottom toolbar (primary + accessory + spacing).
+    public var bottom: CGFloat?
+
+    /// Total height of the top toolbar.
+    public var top: CGFloat?
+
+    /// Total width of the leading toolbar.
+    public var leading: CGFloat?
+
+    /// Total width of the trailing toolbar.
+    public var trailing: CGFloat?
+
+    /// Default empty report.
+    public static let empty = GlassHeightReport()
+
+    public init(
+        bottom: CGFloat? = nil,
+        top: CGFloat? = nil,
+        leading: CGFloat? = nil,
+        trailing: CGFloat? = nil
+    ) {
+        self.bottom = bottom
+        self.top = top
+        self.leading = leading
+        self.trailing = trailing
+    }
+
+    /// Returns height/width for a specific edge.
+    public subscript(edge: GlassEdge) -> CGFloat? {
+        get {
+            switch edge {
+            case .bottom: bottom
+            case .top: top
+            case .leading: leading
+            case .trailing: trailing
+            }
+        }
+        set {
+            switch edge {
+            case .bottom: bottom = newValue
+            case .top: top = newValue
+            case .leading: leading = newValue
+            case .trailing: trailing = newValue
+            }
+        }
+    }
+}
+
+// MARK: - Height Report Environment
+
+extension EnvironmentValues {
+    /// Reported heights for all glass bar edges.
+    /// Content can use this to add padding that accounts for floating glass bars.
+    @Entry public var glassHeights: GlassHeightReport = .empty
+}
+
+// MARK: - View Extension for Density
+
+extension View {
+    /// Sets the toolbar density for this view and its descendants.
+    ///
+    /// - Parameter density: The density level to apply.
+    /// - Returns: A view with the modified toolbar density.
+    public func glassDensity(_ density: GlassDensity) -> some View {
+        environment(\.glassDensity, density)
+    }
+
+    /// Sets the toolbar padding configuration for this view and its descendants.
+    ///
+    /// - Parameter configuration: The padding configuration to apply.
+    /// - Returns: A view with the modified toolbar padding.
+    public func glassPadding(_ configuration: GlassPaddingConfiguration) -> some View {
+        environment(\.glassPaddingConfiguration, configuration)
+    }
+
+    /// Sets the glass bar layout distribution for this view and its descendants.
+    ///
+    /// - Parameter distribution: The layout distribution to apply.
+    /// - Returns: A view with the modified glass bar layout.
+    public func glassLayout(_ distribution: GlassLayoutDistribution) -> some View {
+        environment(\.glassLayoutDistribution, distribution)
+    }
+}
+
+// MARK: - Toolbar Content Padding Modifier
+
+/// Modifier that reads toolbar heights and applies appropriate safe area padding.
+private struct ToolbarContentPaddingModifier: ViewModifier {
+    @Environment(\.glassHeights) private var heights
+
+    func body(content: Content) -> some View {
+        content
+            .safeAreaPadding(.bottom, heights.bottom ?? 0)
+            .safeAreaPadding(.top, heights.top ?? 0)
+            .safeAreaPadding(.leading, heights.leading ?? 0)
+            .safeAreaPadding(.trailing, heights.trailing ?? 0)
+    }
+}
+
+extension View {
+    /// Applies safe area padding to avoid overlap with glass toolbar overlays.
+    ///
+    /// This modifier reads the `toolbarHeights` environment and applies
+    /// appropriate padding for each edge where a toolbar exists.
+    ///
+    /// ## Usage
+    /// ```swift
+    /// ScrollView {
+    ///     content
+    /// }
+    /// .glassBarContentPadding()
+    /// .glass {
+    ///     GlassItem(placement: .bottomPrimary) { ... }
+    /// }
+    /// ```
+    ///
+    /// - Returns: A view with safe area padding applied for all toolbar edges.
+    public func glassToolbarContentPadding() -> some View {
+        modifier(ToolbarContentPaddingModifier())
+    }
+}

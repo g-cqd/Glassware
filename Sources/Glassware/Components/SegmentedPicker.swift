@@ -1,0 +1,310 @@
+//
+//  SegmentedPicker.swift
+//  Glassware
+//
+//  Custom segmented picker with draggable selection capsule.
+//
+
+import SwiftUI
+
+// MARK: - Segmented Picker
+
+/// A custom segmented picker with a draggable selection capsule.
+///
+/// Features:
+/// - Sliding capsule indicator that animates between selections
+/// - Draggable capsule for gesture-based selection with spring animation
+/// - Visual selection feedback during drag (items highlight as thumb passes over)
+/// - Drag constrained to picker bounds
+/// - Invisible hit areas below each item for tap selection
+/// - Supports iconOnly, titleOnly, and titleAndIcon styles
+/// - Supports horizontal and vertical orientation
+/// - VoiceOver support with adjustable action
+///
+/// ## Usage
+/// ```swift
+/// @State private var selected: Tab = .home
+///
+/// SegmentedPicker(selection: $selected, style: .titleAndIcon) {
+///     SegmentedPickerItem(.home, systemImage: "house", style: .titleAndIcon, isSelected: selected == .home) {
+///         Text("Home")
+///     }
+///     SegmentedPickerItem(.search, systemImage: "magnifyingglass", style: .titleAndIcon, isSelected: selected == .search) {
+///         Text("Search")
+///     }
+/// }
+/// ```
+public struct SegmentedPicker<Value: Hashable, Content: View>: View {
+    @Binding var selection: Value
+    let style: SegmentedPickerStyle
+    let axis: SegmentedPickerAxis
+    @ViewBuilder let content: () -> Content
+
+    @State private var itemFrames: [Value: CGRect] = [:]
+    @State private var cachedSortedValues: [Value] = []
+    @State private var dragOffset: CGFloat = 0
+    @State private var isDragging = false
+
+    @Environment(\.glassDensity) private var density
+    @Environment(\.glassSizeContext) private var sizeContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.glassEdge) private var toolbarEdge
+    @Environment(\.glassContainerContext) private var containerContext
+
+    public init(
+        selection: Binding<Value>,
+        style: SegmentedPickerStyle,
+        axis: SegmentedPickerAxis = .horizontal,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self._selection = selection
+        self.style = style
+        self.axis = axis
+        self.content = content
+    }
+
+    private var metrics: GlassMetrics {
+        GlassMetrics(density: density, context: sizeContext)
+    }
+
+    /// Effective axis, accounting for vertical toolbar edge placement.
+    ///
+    /// When on a vertical edge (leading/trailing), automatically uses vertical axis.
+    private var effectiveAxis: SegmentedPickerAxis {
+        toolbarEdge.isVertical ? .vertical : axis
+    }
+
+    /// Effective style, accounting for vertical toolbar edge placement.
+    ///
+    /// When on a vertical edge, defaults to iconOnly for compactness.
+    private var effectiveStyle: SegmentedPickerStyle {
+        if toolbarEdge.isVertical {
+            .iconOnly
+        } else {
+            style
+        }
+    }
+
+    /// The frame of the currently selected item.
+    private var selectedFrame: CGRect? {
+        itemFrames[selection]
+    }
+
+    /// Calculates bounds for drag offset based on item positions.
+    private var dragBounds: ClosedRange<CGFloat> {
+        guard let selectedFrame,
+              let firstValue = cachedSortedValues.first,
+              let lastValue = cachedSortedValues.last,
+              let firstFrame = itemFrames[firstValue],
+              let lastFrame = itemFrames[lastValue] else {
+            return 0...0
+        }
+
+        if effectiveAxis == .horizontal {
+            let minOffset = firstFrame.minX - selectedFrame.minX
+            let maxOffset = lastFrame.minX - selectedFrame.minX
+            return minOffset...maxOffset
+        } else {
+            let minOffset = firstFrame.minY - selectedFrame.minY
+            let maxOffset = lastFrame.minY - selectedFrame.minY
+            return minOffset...maxOffset
+        }
+    }
+
+    /// The value currently under the thumb during drag.
+    private var visualSelection: Value? {
+        guard isDragging, let selectedFrame else { return nil }
+
+        let thumbPosition: CGFloat
+        if effectiveAxis == .horizontal {
+            thumbPosition = selectedFrame.midX + dragOffset
+        } else {
+            thumbPosition = selectedFrame.midY + dragOffset
+        }
+
+        // Find item whose center is closest to thumb center
+        var closestValue: Value?
+        var closestDistance: CGFloat = .infinity
+
+        for (value, frame) in itemFrames {
+            let itemCenter = effectiveAxis == .horizontal ? frame.midX : frame.midY
+            let distance = abs(itemCenter - thumbPosition)
+            if distance < closestDistance {
+                closestDistance = distance
+                closestValue = value
+            }
+        }
+
+        return closestValue
+    }
+
+    public var body: some View {
+        Group {
+            if effectiveAxis == .horizontal {
+                HStack(spacing: 0) {
+                    content()
+                }
+            } else {
+                VStack(spacing: 0) {
+                    content()
+                }
+            }
+        }
+        // Limit dynamic type to prevent picker from exceeding bounds
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        // Pass visual selection to items via environment
+        .environment(\.pickerVisualSelection, visualSelection.map { VisualSelectionState($0) })
+        .coordinateSpace(name: "picker")
+        .onPreferenceChange(SegmentedPickerItemFramePreference<Value>.self) { frames in
+            itemFrames = frames
+            // Cache sorted values based on effective axis
+            if effectiveAxis == .horizontal {
+                cachedSortedValues = frames.sorted { $0.value.minX < $1.value.minX }.map(\.key)
+            } else {
+                cachedSortedValues = frames.sorted { $0.value.minY < $1.value.minY }.map(\.key)
+            }
+        }
+        .background(alignment: .topLeading) {
+            // Selection capsule - positioned via offset
+            if let frame = selectedFrame {
+                selectionCapsule(for: frame)
+            }
+        }
+        .background(alignment: .topLeading) {
+            // Invisible hit areas for tap selection
+            hitAreas
+        }
+        // VoiceOver: Allow swipe up/down to change selection
+        .accessibilityElement(children: .combine)
+        .accessibilityAdjustableAction { direction in
+            adjustSelection(direction: direction)
+        }
+        .accessibilityValue(accessibilityValueText)
+    }
+
+    // MARK: - Accessibility
+
+    private var accessibilityValueText: Text {
+        if let index = cachedSortedValues.firstIndex(of: selection) {
+            Text("\(index + 1) of \(cachedSortedValues.count)")
+        } else {
+            Text("")
+        }
+    }
+
+    private func adjustSelection(direction: AccessibilityAdjustmentDirection) {
+        guard let currentIndex = cachedSortedValues.firstIndex(of: selection) else { return }
+
+        switch direction {
+        case .increment:
+            let nextIndex = currentIndex + 1
+            if nextIndex < cachedSortedValues.count {
+                selection = cachedSortedValues[nextIndex]
+            }
+        case .decrement:
+            let prevIndex = currentIndex - 1
+            if prevIndex >= 0 {
+                selection = cachedSortedValues[prevIndex]
+            }
+        @unknown default:
+            break
+        }
+    }
+
+    // MARK: - Selection Capsule
+
+    @ViewBuilder
+    private func selectionCapsule(for frame: CGRect) -> some View {
+        let clampedOffset = dragOffset.clamped(to: dragBounds)
+
+        Group {
+            if effectiveStyle == .iconOnly {
+                SelectionThumb(shape: Circle())
+            } else {
+                SelectionThumb(shape: Capsule())
+            }
+        }
+        .frame(width: frame.width, height: frame.height)
+        .offset(
+            x: effectiveAxis == .horizontal ? frame.minX + clampedOffset : frame.minX,
+            y: effectiveAxis == .vertical ? frame.minY + clampedOffset : frame.minY
+        )
+        .gesture(dragGesture)
+        .animation(
+            reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
+            value: selection
+        )
+        .animation(
+            reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
+            value: dragOffset
+        )
+    }
+
+    // MARK: - Drag Gesture
+
+    private var dragGesture: some Gesture {
+        DragGesture()
+            .onChanged { value in
+                isDragging = true
+                let translation = effectiveAxis == .horizontal ? value.translation.width : value.translation.height
+                dragOffset = translation.clamped(to: dragBounds)
+            }
+            .onEnded { value in
+                guard let currentFrame = selectedFrame else {
+                    isDragging = false
+                    dragOffset = 0
+                    return
+                }
+
+                // Calculate where the capsule ended up
+                let translation = effectiveAxis == .horizontal ? value.translation.width : value.translation.height
+                let clampedTranslation = translation.clamped(to: dragBounds)
+                let endPosition: CGFloat
+                if effectiveAxis == .horizontal {
+                    endPosition = currentFrame.midX + clampedTranslation
+                } else {
+                    endPosition = currentFrame.midY + clampedTranslation
+                }
+
+                // Find the closest item by center position
+                var closestValue: Value?
+                var closestDistance: CGFloat = .infinity
+
+                for (itemValue, itemFrame) in itemFrames {
+                    let itemCenter = effectiveAxis == .horizontal ? itemFrame.midX : itemFrame.midY
+                    let distance = abs(itemCenter - endPosition)
+                    if distance < closestDistance {
+                        closestDistance = distance
+                        closestValue = itemValue
+                    }
+                }
+
+                // Reset drag state before updating selection
+                // This allows the spring animation to trigger
+                isDragging = false
+                dragOffset = 0
+
+                if let newValue = closestValue {
+                    selection = newValue
+                }
+            }
+    }
+
+    // MARK: - Invisible Hit Areas
+
+    @ViewBuilder
+    private var hitAreas: some View {
+        // Use cachedSortedValues for stable iteration order
+        ForEach(cachedSortedValues, id: \.self) { value in
+            if let frame = itemFrames[value] {
+                Color.clear
+                    .frame(width: frame.width, height: frame.height)
+                    .contentShape(.rect)
+                    .offset(x: frame.minX, y: frame.minY)
+                    .onTapGesture {
+                        selection = value
+                    }
+            }
+        }
+    }
+}

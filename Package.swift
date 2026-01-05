@@ -3,27 +3,27 @@
 import PackageDescription
 
 let package = Package(
-    name: "GlassToolbar",
+    name: "Glassware",
     platforms: [
         .iOS(.v26),
         .macOS(.v26)
     ],
     products: [
         .library(
-            name: "GlassToolbar",
-            targets: ["GlassToolbar"]
+            name: "Glassware",
+            targets: ["Glassware"]
         )
     ],
     targets: [
         .target(
-            name: "GlassToolbar",
+            name: "Glassware",
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
         ),
         .testTarget(
-            name: "GlassToolbarTests",
-            dependencies: ["GlassToolbar"]
+            name: "GlasswareTests",
+            dependencies: ["Glassware"]
         )
     ]
 )
