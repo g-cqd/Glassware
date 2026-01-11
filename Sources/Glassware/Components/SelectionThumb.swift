@@ -9,13 +9,16 @@ import SwiftUI
 
 // MARK: - Selection Thumb
 
-/// Selection indicator that contrasts with the glass background.
+/// Selection indicator with a subtle, elegant appearance on glass backgrounds.
 ///
-/// Glass backgrounds are bright/white, so the thumb uses:
-/// - Light mode: white fill (contrasts with dark text)
-/// - Dark mode: black fill (contrasts with light text)
+/// Design approach:
+/// - Solid white fill with transparency (not material-based)
+/// - Slight black stroke for edge definition
+/// - Very soft, small shadow for subtle depth
 ///
-/// The inverted primary color ensures proper contrast in both schemes.
+/// This white-based approach works universally:
+/// - Dark mode: white glows softly against dark frosted glass
+/// - Light mode: white adds brightness, stroke/shadow define edges
 public struct SelectionThumb<S: Shape>: View {
     let shape: S
 
@@ -25,17 +28,24 @@ public struct SelectionThumb<S: Shape>: View {
 
     public var body: some View {
         shape
-            .fill(Color.primary.inverted.opacity(GlassTokens.Opacity.backgroundFill))
+            .fill(.clear)
+            .background {
+                VisualEffect(
+                    colorTint: Color.primary,
+                    colorTintAlpha: GlassTokens.SelectionThumb.fillOpacity,
+                    blurRadius: 10,
+                ).clipShape(shape)
+            }
             .overlay {
                 shape
                     .stroke(
-                        Color.primary.inverted.opacity(GlassTokens.Opacity.borderStroke),
+                        Color.primary.opacity(GlassTokens.SelectionThumb.strokeOpacity),
                         lineWidth: GlassTokens.Border.lineWidth
                     )
             }
             .shadow(
-                color: .black.opacity(GlassTokens.Shadow.opacity),
-                radius: GlassTokens.Shadow.radius
+                color: .black.opacity(GlassTokens.SelectionThumb.shadowOpacity),
+                radius: GlassTokens.SelectionThumb.shadowRadius
             )
     }
 }
@@ -60,4 +70,100 @@ public struct SelectionThumb<S: Shape>: View {
         }
     }
     .padding()
+}
+
+#Preview("On Glass Background - Light") {
+    ZStack {
+        // Simulated glass background
+        LinearGradient(
+            colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+
+        VStack(spacing: 24) {
+            // Simulated glass container
+            HStack(spacing: 16) {
+                SelectionThumb(shape: Capsule())
+                    .frame(width: 80, height: 36)
+
+                SelectionThumb(shape: Circle())
+                    .frame(width: 36, height: 36)
+            }
+            .padding(8)
+            .background(.ultraThinMaterial, in: Capsule())
+
+            // On solid dark background for comparison
+            HStack(spacing: 16) {
+                SelectionThumb(shape: Capsule())
+                    .frame(width: 80, height: 36)
+
+                SelectionThumb(shape: Circle())
+                    .frame(width: 36, height: 36)
+            }
+            .padding(8)
+            .background(Color.black.opacity(0.8), in: Capsule())
+
+            // On solid light background for comparison
+            HStack(spacing: 16) {
+                SelectionThumb(shape: Capsule())
+                    .frame(width: 80, height: 36)
+
+                SelectionThumb(shape: Circle())
+                    .frame(width: 36, height: 36)
+            }
+            .padding(8)
+            .background(Color.white.opacity(0.9), in: Capsule())
+        }
+    }
+    .preferredColorScheme(.light)
+}
+
+#Preview("On Glass Background - Dark") {
+    ZStack {
+        // Simulated glass background
+        LinearGradient(
+            colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+
+        VStack(spacing: 24) {
+            // Simulated glass container
+            HStack(spacing: 16) {
+                SelectionThumb(shape: Capsule())
+                    .frame(width: 80, height: 36)
+
+                SelectionThumb(shape: Circle())
+                    .frame(width: 36, height: 36)
+            }
+            .padding(8)
+            .background(.ultraThinMaterial, in: Capsule())
+
+            // On solid dark background for comparison
+            HStack(spacing: 16) {
+                SelectionThumb(shape: Capsule())
+                    .frame(width: 80, height: 36)
+
+                SelectionThumb(shape: Circle())
+                    .frame(width: 36, height: 36)
+            }
+            .padding(8)
+            .background(Color.black.opacity(0.8), in: Capsule())
+
+            // On solid light background for comparison
+            HStack(spacing: 16) {
+                SelectionThumb(shape: Capsule())
+                    .frame(width: 80, height: 36)
+
+                SelectionThumb(shape: Circle())
+                    .frame(width: 36, height: 36)
+            }
+            .padding(8)
+            .background(Color.white.opacity(0.9), in: Capsule())
+        }
+    }
+    .preferredColorScheme(.dark)
 }

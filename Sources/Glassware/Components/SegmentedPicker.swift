@@ -224,30 +224,42 @@ private struct SegmentedPickerAxisLayout: Layout {
 
         if axis == .horizontal {
             let maxHeight = idealSizes.map(\.height).max() ?? 0
-            if sizing.isAdaptive {
-                let totalWidth = idealSizes.map(\.width).reduce(0, +) + totalSpacing
-                return CGSize(width: totalWidth, height: maxHeight)
-            } else if sizing.isEven {
-                let proposedWidth = proposal.width ?? (idealSizes.map(\.width).reduce(0, +) + totalSpacing)
+            let idealTotalWidth = idealSizes.map(\.width).reduce(0, +) + totalSpacing
+
+            switch sizing {
+            case .adaptiveFit:
+                // Hug content - use sum of ideal sizes
+                return CGSize(width: idealTotalWidth, height: maxHeight)
+            case .adaptiveFill:
+                // Fill available space, fall back to ideal if no proposal
+                let width = proposal.width ?? idealTotalWidth
+                return CGSize(width: width, height: maxHeight)
+            case .evenFit, .evenFill:
+                let proposedWidth = proposal.width ?? idealTotalWidth
                 return CGSize(width: proposedWidth, height: maxHeight)
-            } else if let fixedWidth = sizing.fixedSize {
+            case .fixed(let fixedWidth):
                 let totalWidth = fixedWidth * CGFloat(subviews.count) + totalSpacing
                 return CGSize(width: totalWidth, height: maxHeight)
             }
-            return .zero
         } else {
             let maxWidth = idealSizes.map(\.width).max() ?? 0
-            if sizing.isAdaptive {
-                let totalHeight = idealSizes.map(\.height).reduce(0, +) + totalSpacing
-                return CGSize(width: maxWidth, height: totalHeight)
-            } else if sizing.isEven {
-                let proposedHeight = proposal.height ?? (idealSizes.map(\.height).reduce(0, +) + totalSpacing)
+            let idealTotalHeight = idealSizes.map(\.height).reduce(0, +) + totalSpacing
+
+            switch sizing {
+            case .adaptiveFit:
+                // Hug content - use sum of ideal sizes
+                return CGSize(width: maxWidth, height: idealTotalHeight)
+            case .adaptiveFill:
+                // Fill available space, fall back to ideal if no proposal
+                let height = proposal.height ?? idealTotalHeight
+                return CGSize(width: maxWidth, height: height)
+            case .evenFit, .evenFill:
+                let proposedHeight = proposal.height ?? idealTotalHeight
                 return CGSize(width: maxWidth, height: proposedHeight)
-            } else if let fixedHeight = sizing.fixedSize {
+            case .fixed(let fixedHeight):
                 let totalHeight = fixedHeight * CGFloat(subviews.count) + totalSpacing
                 return CGSize(width: maxWidth, height: totalHeight)
             }
-            return .zero
         }
     }
 
@@ -259,7 +271,9 @@ private struct SegmentedPickerAxisLayout: Layout {
         let totalSpacing = spacing * CGFloat(max(0, count - 1))
 
         if axis == .horizontal {
-            if sizing.isAdaptive {
+            switch sizing {
+            case .adaptiveFit:
+                // Items at their ideal sizes, hugging content
                 var x = bounds.minX
                 for (index, subview) in subviews.enumerated() {
                     let width = idealSizes[index].width
@@ -270,7 +284,26 @@ private struct SegmentedPickerAxisLayout: Layout {
                     )
                     x += width + spacing
                 }
-            } else if sizing.isEven {
+
+            case .adaptiveFill:
+                // Items expand proportionally to fill available space
+                let idealTotalWidth = idealSizes.map(\.width).reduce(0, +)
+                let availableWidth = bounds.width - totalSpacing
+                let scale = idealTotalWidth > 0 ? availableWidth / idealTotalWidth : 1
+
+                var x = bounds.minX
+                for (index, subview) in subviews.enumerated() {
+                    let width = idealSizes[index].width * scale
+                    subview.place(
+                        at: CGPoint(x: x + width / 2, y: bounds.midY),
+                        anchor: .center,
+                        proposal: ProposedViewSize(width: width, height: bounds.height)
+                    )
+                    x += width + spacing
+                }
+
+            case .evenFit, .evenFill:
+                // All items get equal width
                 let cellWidth = (bounds.width - totalSpacing) / CGFloat(count)
                 for (index, subview) in subviews.enumerated() {
                     let x = bounds.minX + CGFloat(index) * (cellWidth + spacing)
@@ -280,7 +313,8 @@ private struct SegmentedPickerAxisLayout: Layout {
                         proposal: ProposedViewSize(width: cellWidth, height: bounds.height)
                     )
                 }
-            } else if let fixedWidth = sizing.fixedSize {
+
+            case .fixed(let fixedWidth):
                 for (index, subview) in subviews.enumerated() {
                     let x = bounds.minX + CGFloat(index) * (fixedWidth + spacing)
                     subview.place(
@@ -291,7 +325,9 @@ private struct SegmentedPickerAxisLayout: Layout {
                 }
             }
         } else {
-            if sizing.isAdaptive {
+            switch sizing {
+            case .adaptiveFit:
+                // Items at their ideal sizes, hugging content
                 var y = bounds.minY
                 for (index, subview) in subviews.enumerated() {
                     let height = idealSizes[index].height
@@ -302,7 +338,26 @@ private struct SegmentedPickerAxisLayout: Layout {
                     )
                     y += height + spacing
                 }
-            } else if sizing.isEven {
+
+            case .adaptiveFill:
+                // Items expand proportionally to fill available space
+                let idealTotalHeight = idealSizes.map(\.height).reduce(0, +)
+                let availableHeight = bounds.height - totalSpacing
+                let scale = idealTotalHeight > 0 ? availableHeight / idealTotalHeight : 1
+
+                var y = bounds.minY
+                for (index, subview) in subviews.enumerated() {
+                    let height = idealSizes[index].height * scale
+                    subview.place(
+                        at: CGPoint(x: bounds.midX, y: y + height / 2),
+                        anchor: .center,
+                        proposal: ProposedViewSize(width: bounds.width, height: height)
+                    )
+                    y += height + spacing
+                }
+
+            case .evenFit, .evenFill:
+                // All items get equal height
                 let cellHeight = (bounds.height - totalSpacing) / CGFloat(count)
                 for (index, subview) in subviews.enumerated() {
                     let y = bounds.minY + CGFloat(index) * (cellHeight + spacing)
@@ -312,7 +367,8 @@ private struct SegmentedPickerAxisLayout: Layout {
                         proposal: ProposedViewSize(width: bounds.width, height: cellHeight)
                     )
                 }
-            } else if let fixedHeight = sizing.fixedSize {
+
+            case .fixed(let fixedHeight):
                 for (index, subview) in subviews.enumerated() {
                     let y = bounds.minY + CGFloat(index) * (fixedHeight + spacing)
                     subview.place(
@@ -446,21 +502,23 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
             .accessibilityValue(accessibilityValueText)
     }
 
-    private func usesAdaptiveSize(for axis: Axis) -> Bool {
-        sizing.isAdaptive && self.axis == axis
+    /// Applies consistent sizing modifiers to a child view.
+    /// This ensures all layers (base, masked, hittable) have identical layout behavior.
+    @ViewBuilder
+    private func sizedChild<V: View>(_ content: V) -> some View {
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .fixedSize(
+                horizontal: sizing.isAdaptive && axis == .horizontal,
+                vertical: sizing.isAdaptive && axis == .vertical
+            )
     }
-    
+
     @ViewBuilder
     private var baseLayer: some View {
         layout {
             ForEach(Array(children.enumerated()), id: \.element.id) { index, child in
-                child
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .fixedSize(
-                        horizontal: usesAdaptiveSize(for: .horizontal),
-                        vertical: usesAdaptiveSize(for: .vertical)
-                    )
+                sizedChild(child.foregroundStyle(Color.primary.tertiary))
                     .background {
                         GeometryReader { geo in
                             Color.clear
@@ -491,7 +549,7 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
         // Primary styled content, masked by thumb shape
         layout {
             ForEach(Array(children.enumerated()), id: \.element.id) { _, child in
-                child.foregroundStyle(.primary)
+                sizedChild(child.foregroundStyle(.primary))
             }
         }
         .allowsHitTesting(false)
@@ -511,7 +569,8 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
     private var hittableLayer: some View {
         layout {
             ForEach(Array(children.enumerated()), id: \.element.id) { index, child in
-                Color.clear
+                // Use invisible child to maintain consistent sizing with other layers
+                sizedChild(child.hidden())
                     .contentShape(.rect)
                     .onTapGesture {
                         if let value: Value = try? child.getTag() {

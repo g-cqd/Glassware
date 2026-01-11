@@ -36,6 +36,28 @@ public enum GlassTokens: Sendable {
         public static let pressedTab: Double = 0.9
     }
 
+    // MARK: - Selection Thumb Values
+
+    /// Design tokens for the selection thumb indicator.
+    /// Uses a white-based approach that works universally on glass backgrounds.
+    public enum SelectionThumb: Sendable {
+        /// Fill opacity for the thumb background.
+        /// White at this opacity creates a gentle presence without being harsh.
+        public static let fillOpacity: Double = 0.1
+
+        /// Stroke opacity for the subtle edge definition.
+        /// "Slight" - visible but not heavy.
+        public static let strokeOpacity: Double = 0.12
+
+        /// Shadow opacity for the soft depth effect.
+        /// "Very very soft" - barely perceptible lift.
+        public static let shadowOpacity: Double = 0.06
+
+        /// Shadow radius for the small, delicate shadow.
+        /// "Small" - tight and subtle.
+        public static let shadowRadius: CGFloat = 2
+    }
+
     // MARK: - Shadow Values
 
     /// Shadow tokens for depth and elevation.
