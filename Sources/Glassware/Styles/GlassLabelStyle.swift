@@ -30,6 +30,7 @@ public struct GlassLabelStyle: LabelStyle {
                 .foregroundStyle(.clear)
                 .overlay {
                     configuration.icon
+//                        .contentTransition(.symbolEffect(.replace))
                 }
 
             configuration.title

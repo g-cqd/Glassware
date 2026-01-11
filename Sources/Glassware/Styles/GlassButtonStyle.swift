@@ -108,8 +108,8 @@ public struct GlassButtonStyle: ButtonStyle {
             .font(.body.weight(.medium))
             .fontDesign(.rounded)
             .imageScale(imageScale)
-            .contentTransition(.symbolEffect(.replace))
-            .foregroundStyle(foregroundColor(role: role, isPressed: configuration.isPressed))
+            .foregroundStyle(foregroundColor(role: role))
+            .opacity(labelOpacity(isPressed: configuration.isPressed))
             .frame(
                 minWidth: effectiveVisualStyle.isIconOnly ? scaledSize : nil,
                 idealWidth: effectiveVisualStyle.isIconOnly ? nil : scaledMinWidth,
@@ -167,34 +167,37 @@ public struct GlassButtonStyle: ButtonStyle {
                 .labelStyle(.titleOnly)
 
         case .iconOnly(let image, let systemImage):
-            if let systemImage {
-                Image(systemName: systemImage)
-                    .accessibilityHidden(true)
-                    .accessibilityRepresentation { configuration.label }
-            } else if let image {
-                Image(image)
-                    .accessibilityHidden(true)
-                    .accessibilityRepresentation { configuration.label }
-            } else {
-                configuration.label
-                    .labelStyle(.iconOnly)
+            Group {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .accessibilityHidden(true)
+                        .accessibilityRepresentation { configuration.label }
+                } else if let image {
+                    Image(image)
+                        .accessibilityHidden(true)
+                        .accessibilityRepresentation { configuration.label }
+                } else {
+                    configuration.label
+                        .labelStyle(.iconOnly)
+                }
             }
+            .contentTransition(.symbolEffect(.replace))
         }
     }
 
     // MARK: - Foreground Color
 
-    /// Computes foreground color based on role, pressed state, and enabled state.
-    private func foregroundColor(role: ButtonRole?, isPressed: Bool) -> Color {
-        guard isEnabled else {
-            return .primary.opacity(GlassTokens.Opacity.disabled)
-        }
+    /// Computes foreground color based on role.
+    private func foregroundColor(role: ButtonRole?) -> Color {
+        role == .destructive ? .red : .primary
+    }
 
-        if role == .destructive {
-            return isPressed ? .red.opacity(0.6) : .red
+    /// Computes label opacity based on pressed and enabled states.
+    private func labelOpacity(isPressed: Bool) -> CGFloat {
+        if !isEnabled {
+            return GlassTokens.Opacity.disabled
         }
-
-        return isPressed ? .primary.opacity(0.6) : .primary
+        return isPressed ? 0.6 : 1
     }
 }
 
@@ -297,9 +300,8 @@ public struct GlassProminentButtonStyle: ButtonStyle {
             .font(.body.weight(.medium))
             .fontDesign(.rounded)
             .imageScale(imageScale)
-            .contentTransition(.symbolEffect(.replace))
-            .compositingGroup()
-            .foregroundStyle(foregroundColor(role: role, isPressed: configuration.isPressed))
+            .foregroundStyle(foregroundColor(role: role))
+            .opacity(labelOpacity)
             .frame(
                 minWidth: effectiveVisualStyle.isIconOnly ? scaledSize : nil,
                 idealWidth: effectiveVisualStyle.isIconOnly ? nil : scaledMinWidth,
@@ -311,7 +313,6 @@ public struct GlassProminentButtonStyle: ButtonStyle {
                 backgroundView(isPressed: configuration.isPressed, role: role)
             }
             .contentShape(.rect)
-            .accessibilityAddTraits(role == .destructive ? .startsMediaSession : [])
             .sensoryFeedback(.selection, trigger: configuration.isPressed) { _, newValue in
                 newValue
             }
@@ -360,18 +361,21 @@ public struct GlassProminentButtonStyle: ButtonStyle {
                 .labelStyle(.titleOnly)
 
         case .iconOnly(let image, let systemImage):
-            if let systemImage {
-                Image(systemName: systemImage)
-                    .accessibilityHidden(true)
-                    .accessibilityRepresentation { configuration.label }
-            } else if let image {
-                Image(image)
-                    .accessibilityHidden(true)
-                    .accessibilityRepresentation { configuration.label }
-            } else {
-                configuration.label
-                    .labelStyle(.iconOnly)
+            Group {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .accessibilityHidden(true)
+                        .accessibilityRepresentation { configuration.label }
+                } else if let image {
+                    Image(image)
+                        .accessibilityHidden(true)
+                        .accessibilityRepresentation { configuration.label }
+                } else {
+                    configuration.label
+                        .labelStyle(.iconOnly)
+                }
             }
+            .contentTransition(.symbolEffect(.replace))
         }
     }
 
@@ -380,31 +384,31 @@ public struct GlassProminentButtonStyle: ButtonStyle {
     @ViewBuilder
     private func backgroundView(isPressed: Bool, role: ButtonRole?) -> some View {
         let shape = effectiveVisualStyle.isIconOnly && containerContext.isSingleItem
-            ? AnyShape(Circle())
-            : AnyShape(Capsule())
+        ? AnyShape(.circle)
+        : AnyShape(.capsule)
 
         if role == .destructive {
             DestructiveThumb(shape: shape)
-                .opacity(isPressed ? 0.8 : 1)
-        } else {
-            SelectionThumb(shape: shape)
-                .opacity(isPressed ? 0.8 : 1)
         }
     }
 
     // MARK: - Foreground Color
 
     /// Computes foreground color based on role, pressed state, and enabled state.
-    private func foregroundColor(role: ButtonRole?, isPressed: Bool) -> Color {
-        guard isEnabled else {
-            return .primary.opacity(GlassTokens.Opacity.disabled)
-        }
-
+    private func foregroundColor(role: ButtonRole?) -> Color {
         if role == .destructive {
-            return .white
+            .white
+        } else {
+            .primary
         }
-
-        return .primary
+    }
+    
+    private var labelOpacity: CGFloat {
+        if isEnabled {
+            1
+        } else {
+            GlassTokens.Opacity.disabled
+        }
     }
 }
 

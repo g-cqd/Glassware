@@ -98,6 +98,8 @@ struct GlassOverlayModifier: ViewModifier {
     }
 
     func body(content: Content) -> some View {
+        let _ = Self._printChanges()
+        
         content
             // Inject heights into content's environment
             .environment(\.glassHeights, heights)
