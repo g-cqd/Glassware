@@ -125,17 +125,17 @@ public struct GlassButtonStyle: ButtonStyle {
             .animation(disabledAnimation, value: isEnabled)
     }
 
-    /// Animation for disabled state transitions.
+    // MARK: - Layout Helpers
+
     private var disabledAnimation: Animation? {
         reduceMotion ? nil : .easeInOut(duration: GlassTokens.Animation.disabledTransitionDuration)
     }
 
-    /// Horizontal padding, slightly larger for text-containing styles.
     private var effectiveHorizontalPadding: CGFloat {
         if effectiveVisualStyle.isIconOnly || containerContext.isVerticalEdge {
-            return metrics.effectiveComponentPadding
+            metrics.effectiveComponentPadding
         } else {
-            return metrics.effectiveComponentPadding + 6
+            metrics.effectiveComponentPadding + 6
         }
     }
 
@@ -185,18 +185,16 @@ public struct GlassButtonStyle: ButtonStyle {
         }
     }
 
-    // MARK: - Foreground Color
+    // MARK: - Foreground Color & Opacity
 
-    /// Computes foreground color based on role.
+    /// Foreground color based on role.
     private func foregroundColor(role: ButtonRole?) -> Color {
         role == .destructive ? .red : .primary
     }
 
-    /// Computes label opacity based on pressed and enabled states.
+    /// Label opacity based on pressed and enabled states.
     private func labelOpacity(isPressed: Bool) -> CGFloat {
-        if !isEnabled {
-            return GlassTokens.Opacity.disabled
-        }
+        if !isEnabled { return GlassTokens.Opacity.disabled }
         return isPressed ? 0.6 : 1
     }
 }
@@ -309,9 +307,7 @@ public struct GlassProminentButtonStyle: ButtonStyle {
             )
             .padding(.vertical, metrics.effectiveComponentPadding)
             .padding(.horizontal, effectiveHorizontalPadding)
-            .background {
-                backgroundView(isPressed: configuration.isPressed, role: role)
-            }
+            .background { backgroundView(role: role) }
             .contentShape(.rect)
             .sensoryFeedback(.selection, trigger: configuration.isPressed) { _, newValue in
                 newValue
@@ -319,17 +315,17 @@ public struct GlassProminentButtonStyle: ButtonStyle {
             .animation(disabledAnimation, value: isEnabled)
     }
 
-    /// Animation for disabled state transitions.
+    // MARK: - Layout Helpers
+
     private var disabledAnimation: Animation? {
         reduceMotion ? nil : .easeInOut(duration: GlassTokens.Animation.disabledTransitionDuration)
     }
 
-    /// Horizontal padding, slightly larger for text-containing styles.
     private var effectiveHorizontalPadding: CGFloat {
         if effectiveVisualStyle.isIconOnly || containerContext.isVerticalEdge {
-            return metrics.effectiveComponentPadding
+            metrics.effectiveComponentPadding
         } else {
-            return metrics.effectiveComponentPadding + 6
+            metrics.effectiveComponentPadding + 6
         }
     }
 
@@ -382,33 +378,25 @@ public struct GlassProminentButtonStyle: ButtonStyle {
     // MARK: - Background View
 
     @ViewBuilder
-    private func backgroundView(isPressed: Bool, role: ButtonRole?) -> some View {
-        let shape = effectiveVisualStyle.isIconOnly && containerContext.isSingleItem
-        ? AnyShape(.circle)
-        : AnyShape(.capsule)
-
+    private func backgroundView(role: ButtonRole?) -> some View {
         if role == .destructive {
+            let shape = effectiveVisualStyle.isIconOnly && containerContext.isSingleItem
+                ? AnyShape(.circle)
+                : AnyShape(.capsule)
             DestructiveThumb(shape: shape)
         }
     }
 
-    // MARK: - Foreground Color
+    // MARK: - Foreground Color & Opacity
 
-    /// Computes foreground color based on role, pressed state, and enabled state.
+    /// Foreground color based on role.
     private func foregroundColor(role: ButtonRole?) -> Color {
-        if role == .destructive {
-            .white
-        } else {
-            .primary
-        }
+        role == .destructive ? .white : .primary
     }
-    
+
+    /// Label opacity based on enabled state.
     private var labelOpacity: CGFloat {
-        if isEnabled {
-            1
-        } else {
-            GlassTokens.Opacity.disabled
-        }
+        isEnabled ? 1 : GlassTokens.Opacity.disabled
     }
 }
 
