@@ -2,7 +2,7 @@
 
 import PackageDescription
 
-let package = Package(
+private let package = Package(
     name: "Glassware",
     platforms: [
         .iOS(.v26),
@@ -17,13 +17,18 @@ let package = Package(
     targets: [
         .target(
             name: "Glassware",
-            swiftSettings: [
-                .swiftLanguageMode(.v6)
-            ]
+            swiftSettings: swiftSettings
         ),
         .testTarget(
             name: "GlasswareTests",
-            dependencies: ["Glassware"]
+            dependencies: ["Glassware"],
+            swiftSettings: swiftSettings
         )
     ]
 )
+
+private let swiftSettings: [SwiftSetting] = [
+    .strictMemorySafety(),
+    .swiftLanguageMode(.version("6.2")),
+    .enableUpcomingFeature("StrictConcurrency")
+]
