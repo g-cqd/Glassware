@@ -9,14 +9,19 @@ import SwiftUI
 
 // MARK: - Glass Button Style
 
-/// A subtle button style for glass toolbar items.
+/// A button style for glass toolbar items.
 ///
-/// This style provides elegant press feedback suitable for toolbar actions.
+/// This style provides elegant press feedback through coordinated effects:
+/// - Foreground opacity change on press
+/// - Haptic feedback
+/// - Smooth symbol replacement transitions
+///
 /// It automatically responds to:
-/// - **Pressed state**: Shows selection thumb background with scale animation
-/// - **Disabled state**: Dims to 30% opacity
+/// - **Pressed state**: Dims foreground opacity
+/// - **Disabled state**: Smoothly fades to 30% opacity
 /// - **Destructive role**: Tints foreground red
-/// - **Cancel role**: Standard secondary appearance
+/// - **Cancel role**: Standard primary appearance
+/// - **Symbol changes**: Smooth replace transition between SF Symbols
 ///
 /// ## Usage
 /// ```swift
@@ -103,6 +108,7 @@ public struct GlassButtonStyle: ButtonStyle {
             .font(.body.weight(.medium))
             .fontDesign(.rounded)
             .imageScale(imageScale)
+            .contentTransition(.symbolEffect(.replace))
             .foregroundStyle(foregroundColor(role: role, isPressed: configuration.isPressed))
             .frame(
                 minWidth: effectiveVisualStyle.isIconOnly ? scaledSize : nil,
@@ -111,18 +117,17 @@ public struct GlassButtonStyle: ButtonStyle {
             )
             .padding(.vertical, metrics.effectiveComponentPadding)
             .padding(.horizontal, effectiveHorizontalPadding)
-            .background {
-                backgroundView(isPressed: configuration.isPressed, role: role)
-            }
             .contentShape(.rect)
             .accessibilityAddTraits(role == .destructive ? .startsMediaSession : [])
             .sensoryFeedback(.selection, trigger: configuration.isPressed) { _, newValue in
                 newValue
             }
-            .animation(
-                reduceMotion ? nil : .easeOut(duration: GlassTokens.Animation.pressDuration),
-                value: configuration.isPressed
-            )
+            .animation(disabledAnimation, value: isEnabled)
+    }
+
+    /// Animation for disabled state transitions.
+    private var disabledAnimation: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: GlassTokens.Animation.disabledTransitionDuration)
     }
 
     /// Horizontal padding, slightly larger for text-containing styles.
@@ -177,33 +182,6 @@ public struct GlassButtonStyle: ButtonStyle {
         }
     }
 
-    // MARK: - Background View
-
-    @ViewBuilder
-    private func backgroundView(isPressed: Bool, role: ButtonRole?) -> some View {
-        selectionThumb(role: role)
-            .opacity(isPressed ? 1 : 0)
-            .scaleEffect(isPressed ? 1.0 : GlassTokens.Animation.pressedScale)
-            .animation(
-                reduceMotion ? nil : .interactiveSpring(duration: GlassTokens.Animation.pressDuration),
-                value: isPressed
-            )
-    }
-
-    /// Creates the appropriate selection thumb shape.
-    @ViewBuilder
-    private func selectionThumb(role: ButtonRole?) -> some View {
-        let shape = effectiveVisualStyle.isIconOnly && containerContext.isSingleItem
-            ? AnyShape(Circle())
-            : AnyShape(Capsule())
-
-        if role == .destructive {
-            DestructiveThumb(shape: shape)
-        } else {
-            SelectionThumb(shape: shape)
-        }
-    }
-
     // MARK: - Foreground Color
 
     /// Computes foreground color based on role, pressed state, and enabled state.
@@ -213,10 +191,10 @@ public struct GlassButtonStyle: ButtonStyle {
         }
 
         if role == .destructive {
-            return isPressed ? .red : .red.opacity(0.9)
+            return isPressed ? .red.opacity(0.6) : .red
         }
 
-        return isPressed ? .primary : .secondary
+        return isPressed ? .primary.opacity(0.6) : .primary
     }
 }
 
@@ -225,12 +203,17 @@ public struct GlassButtonStyle: ButtonStyle {
 /// A prominent button style for primary actions in glass toolbars.
 ///
 /// This style provides higher visual prominence than the standard glass style,
-/// suitable for primary or call-to-action buttons.
+/// suitable for primary or call-to-action buttons. Features:
+/// - Persistent selection thumb background
+/// - Scale and opacity feedback on press
+/// - Smooth symbol replacement transitions
+///
 /// It automatically responds to:
-/// - **Pressed state**: Shows selection thumb with scale animation
-/// - **Disabled state**: Dims to 30% opacity
-/// - **Destructive role**: Tints foreground and background red
+/// - **Pressed state**: Scales background, dims opacity
+/// - **Disabled state**: Smoothly fades to 30% opacity
+/// - **Destructive role**: Red-tinted background and white foreground
 /// - **Cancel role**: Standard appearance
+/// - **Symbol changes**: Smooth replace transition between SF Symbols
 ///
 /// ## Usage
 /// ```swift
@@ -314,6 +297,8 @@ public struct GlassProminentButtonStyle: ButtonStyle {
             .font(.body.weight(.medium))
             .fontDesign(.rounded)
             .imageScale(imageScale)
+            .contentTransition(.symbolEffect(.replace))
+            .compositingGroup()
             .foregroundStyle(foregroundColor(role: role, isPressed: configuration.isPressed))
             .frame(
                 minWidth: effectiveVisualStyle.isIconOnly ? scaledSize : nil,
@@ -330,10 +315,18 @@ public struct GlassProminentButtonStyle: ButtonStyle {
             .sensoryFeedback(.selection, trigger: configuration.isPressed) { _, newValue in
                 newValue
             }
-            .animation(
-                reduceMotion ? nil : .easeOut(duration: GlassTokens.Animation.pressDuration),
-                value: configuration.isPressed
-            )
+            .animation(backgroundAnimation, value: configuration.isPressed)
+            .animation(disabledAnimation, value: isEnabled)
+    }
+
+    /// Animation for background press effects (scale, opacity).
+    private var backgroundAnimation: Animation? {
+        reduceMotion ? nil : .easeOut(duration: GlassTokens.Animation.pressDuration)
+    }
+
+    /// Animation for disabled state transitions.
+    private var disabledAnimation: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: GlassTokens.Animation.disabledTransitionDuration)
     }
 
     /// Horizontal padding, slightly larger for text-containing styles.

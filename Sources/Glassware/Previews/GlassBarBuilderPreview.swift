@@ -275,14 +275,14 @@ private struct OptionalItemsPreview: View {
 /// Shows different accessory offset configurations.
 private struct AccessoryVariationsPreview: View {
   @State private var selectedTab: PreviewTab = .home
-  @State private var accessoryOffset: CGFloat = -8
+  @State private var accessoryOffset: CGFloat = 0
 
   var body: some View {
     VStack {
       Text("Accessory Offset: \(Int(accessoryOffset))pt")
         .font(.headline)
 
-      Slider(value: $accessoryOffset, in: -16...32, step: 4) {
+      Slider(value: $accessoryOffset, in: -20...40, step: 4) {
         Text("Offset")
       }
       .padding(.horizontal)
@@ -324,11 +324,11 @@ private struct AccessoryVariationsPreview: View {
 
   private var accessoryDescription: String {
     if accessoryOffset < 0 {
-      return "Negative offset: Accessory overlaps toolbar (melting effect)"
+      return "Negative: Accessory overlaps toolbar by \(Int(-accessoryOffset))pt"
     } else if accessoryOffset == 0 {
-      return "Zero offset: Accessory touches toolbar edge"
+      return "Zero: Accessory bottom touches toolbar top"
     } else {
-      return "Positive offset: Accessory separated from toolbar"
+      return "Positive: \(Int(accessoryOffset))pt gap"
     }
   }
 }

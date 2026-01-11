@@ -382,16 +382,6 @@ private struct SegmentedPickerAxisLayout: Layout {
     }
 }
 
-// MARK: - Preference Key for Cell Frames
-
-private struct SegmentedPickerCellFramePreference: PreferenceKey {
-    nonisolated(unsafe) static var defaultValue: [Int: CGRect] = [:]
-
-    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
-        value.merge(nextValue()) { $1 }
-    }
-}
-
 // MARK: - Content View
 
 private struct SegmentedPickerContent<Value: Hashable>: View {
@@ -480,26 +470,26 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
                 vertical: !sizing.fills && axis == .vertical
             )
             .coordinateSpace(name: "picker")
-            .onPreferenceChange(SegmentedPickerCellFramePreference.self) { frames in
-                cellFrames = frames
-            }
             .overlay(alignment: .topLeading) { thumbLayer }
             .overlay { maskedLayer }
             .overlay { hittableLayer }
             .overlay(alignment: .topLeading) { invisibleDraggableRegion }
-            .animation(
-                reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
-                value: selectedIndex
-            )
-            .animation(
-                reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
-                value: dragOffset
-            )
+            .animation(selectionAnimation, value: selectedIndex)
+            .animation(selectionAnimation, value: dragOffset)
             .accessibilityElement(children: .combine)
             .accessibilityAdjustableAction { direction in
                 adjustSelection(direction: direction)
             }
             .accessibilityValue(accessibilityValueText)
+    }
+
+    /// Spring animation for selection changes, disabled during drag or when reduce motion is enabled.
+    private var selectionAnimation: Animation? {
+        guard !reduceMotion, !isDragging else { return nil }
+        return .spring(
+            response: GlassTokens.Animation.selectionSpringResponse,
+            dampingFraction: GlassTokens.Animation.selectionSpringDamping
+        )
     }
 
     /// Applies consistent sizing modifiers to a child view.
@@ -519,13 +509,11 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
         layout {
             ForEach(Array(children.enumerated()), id: \.element.id) { index, child in
                 sizedChild(child.foregroundStyle(Color.primary.tertiary))
-                    .background {
-                        GeometryReader { geo in
-                            Color.clear
-                                .preference(
-                                    key: SegmentedPickerCellFramePreference.self,
-                                    value: [index: geo.frame(in: .named("picker"))]
-                                )
+                    .onGeometryChange(for: CGRect.self) { proxy in
+                        proxy.frame(in: .named("picker"))
+                    } action: { frame in
+                        if cellFrames[index] != frame {
+                            cellFrames[index] = frame
                         }
                     }
             }

@@ -66,6 +66,7 @@ public struct SegmentedPickerItem<Value: Hashable, Label: View>: View {
             if let systemImage {
                 Image(systemName: systemImage)
                     .imageScale(.large)
+                    .contentTransition(.symbolEffect(.replace))
             }
 
         case .titleOnly:
@@ -82,6 +83,7 @@ public struct SegmentedPickerItem<Value: Hashable, Label: View>: View {
                         .imageScale(.medium)
                         .overlay {
                             Image(systemName: systemImage)
+                                .contentTransition(.symbolEffect(.replace))
                         }
                 }
                 label()

@@ -151,47 +151,69 @@ private struct AccessibilitySafeDensityPreview: View {
 private struct ColorContrastPreview: View {
     var body: some View {
         VStack(spacing: 24) {
-            PreviewSection(title: "Tab States") {
+            PreviewSection(title: "Standard Button") {
                 HStack(spacing: 16) {
-                    stateColumn(title: "Unselected", isSelected: false)
-                    stateColumn(title: "Selected", isSelected: true)
+                    stateColumn(title: "Enabled", foregroundLabel: ".primary") {
+                        Button {} label: {
+                            Label("Action", systemImage: "house")
+                        }
+                        .buttonStyle(.glass())
+                    }
+
+                    stateColumn(title: "Disabled", foregroundLabel: ".primary @ 30%") {
+                        Button {} label: {
+                            Label("Action", systemImage: "house")
+                        }
+                        .buttonStyle(.glass())
+                        .disabled(true)
+                    }
                 }
             }
 
-            PreviewSection(title: "Action State") {
-                Button {} label: {
-                    Label("Action", systemImage: "plus")
+            PreviewSection(title: "Destructive Role") {
+                stateColumn(title: "Destructive", foregroundLabel: ".red") {
+                    Button(role: .destructive) {} label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .buttonStyle(.glass())
                 }
-                .buttonStyle(.glass(style: .iconOnly()))
-
             }
 
-            PreviewSection(title: "Disabled State") {
-                Button {} label: {
-                    Label("Disabled", systemImage: "xmark")
-                }
-                .buttonStyle(.glass(style: .iconOnly()))
-                .disabled(true)
+            PreviewSection(title: "Prominent Style") {
+                HStack(spacing: 16) {
+                    stateColumn(title: "Prominent", foregroundLabel: ".primary") {
+                        Button {} label: {
+                            Label("Add", systemImage: "plus")
+                        }
+                        .buttonStyle(.glassProminent())
+                    }
 
+                    stateColumn(title: "Prominent Destructive", foregroundLabel: ".white") {
+                        Button(role: .destructive) {} label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .buttonStyle(.glassProminent())
+                    }
+                }
             }
         }
         .padding()
     }
 
     @ViewBuilder
-    private func stateColumn(title: String, isSelected: Bool) -> some View {
+    private func stateColumn<Content: View>(
+        title: String,
+        foregroundLabel: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         VStack(spacing: 8) {
-            Button {} label: {
-                Label("Tab", systemImage: "house")
-            }
-            .buttonStyle(.glass())
-
+            content()
 
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Text(isSelected ? ".primary" : ".secondary")
+            Text(foregroundLabel)
                 .font(.caption2.monospaced())
                 .foregroundStyle(.tertiary)
         }
@@ -211,21 +233,27 @@ private struct VoiceOverPreview: View {
 
             VStack(alignment: .leading, spacing: 16) {
                 accessibilityRow(
-                    title: "Tab Button (Selected)",
-                    traits: ".isSelected",
-                    hint: "Currently selected"
-                )
-
-                accessibilityRow(
-                    title: "Tab Button (Unselected)",
-                    traits: "none",
-                    hint: "Double tap to switch"
-                )
-
-                accessibilityRow(
-                    title: "Action Button",
-                    traits: "none",
+                    title: "Standard Button",
+                    traits: ".isButton",
                     hint: "Double tap to activate"
+                )
+
+                accessibilityRow(
+                    title: "Destructive Button",
+                    traits: ".isButton, .startsMediaSession",
+                    hint: "Double tap to delete"
+                )
+
+                accessibilityRow(
+                    title: "Disabled Button",
+                    traits: ".isButton, .notEnabled",
+                    hint: "Dimmed"
+                )
+
+                accessibilityRow(
+                    title: "Segmented Picker",
+                    traits: ".adjustable",
+                    hint: "Swipe up or down to adjust"
                 )
             }
 
@@ -423,16 +451,20 @@ private struct BulletPoint: View {
             }
 
             Section("Color Usage") {
-                LabeledContent("Selected Tab", value: ".primary")
-                LabeledContent("Unselected Tab", value: ".secondary")
-                LabeledContent("Action", value: ".primary")
+                LabeledContent("Standard Button", value: ".primary")
+                LabeledContent("Standard Pressed", value: ".primary @ 60%")
+                LabeledContent("Destructive Button", value: ".red")
+                LabeledContent("Destructive Pressed", value: ".red @ 60%")
+                LabeledContent("Prominent Button", value: ".primary")
+                LabeledContent("Prominent Destructive", value: ".white")
                 LabeledContent("Disabled", value: ".primary @ 30%")
             }
 
             Section("Traits") {
-                LabeledContent("Selected Tab", value: ".isSelected")
-                LabeledContent("Unselected Tab", value: "none")
-                LabeledContent("Picker", value: ".adjustable")
+                LabeledContent("Standard Button", value: ".isButton")
+                LabeledContent("Destructive Button", value: ".startsMediaSession")
+                LabeledContent("Disabled Button", value: ".notEnabled")
+                LabeledContent("Segmented Picker", value: ".adjustable")
             }
         }
         .navigationTitle("Accessibility Audit")

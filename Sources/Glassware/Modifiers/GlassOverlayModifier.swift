@@ -208,16 +208,15 @@ private struct EdgeGlassContainer: View {
 
     /// Calculates the maximum accessory extension (how far accessories extend beyond toolbar).
     ///
-    /// With the default 12pt spacing, accessory extends:
-    /// - accessoryHeight (48pt) + defaultSpacing (12pt) = 60pt above primary
-    /// - Additional positive userOffset increases this, negative decreases it
+    /// Extension = accessoryHeight + userOffset (when positive)
+    /// - accessoryHeight (48pt) = base extension
+    /// - Positive userOffset adds to separation
     private var maxAccessoryExtension: CGFloat {
         guard !config.accessories.isEmpty else { return 0 }
         // Find the accessory with maximum separation (most positive offset)
         let maxUserOffset = config.accessories.map { $0.offset }.max() ?? 0
-        // Total extension = accessory height + default spacing + user offset + container spacing
-        // User offset adds to separation when positive
-        return accessorySizeContext.containerHeight + defaultAccessorySpacing + max(0, maxUserOffset) + metrics.containerSpacing
+        // Total extension = accessory height + user offset (if positive) + container spacing
+        return accessorySizeContext.containerHeight + max(0, maxUserOffset) + metrics.containerSpacing
     }
 
     /// Extra spacing added to bottom edge height for content padding.
@@ -271,9 +270,12 @@ private struct EdgeGlassContainer: View {
     /// Provides a minimal crossfade for reduced motion instead of nil to maintain visual continuity.
     private var collapseAnimation: Animation {
         if reduceMotion {
-            return .linear(duration: 0.15)
+            return .linear(duration: GlassTokens.Animation.disabledTransitionDuration)
         }
-        return collapseConfig?.animation ?? .spring(duration: 0.35, bounce: 0.2)
+        return collapseConfig?.animation ?? .spring(
+            duration: GlassTokens.Animation.collapseSpringResponse,
+            bounce: GlassTokens.Animation.collapseSpringBounce
+        )
     }
 
     /// Creates a height report for just this edge.
@@ -387,6 +389,7 @@ private struct EdgeGlassContainer: View {
                 collapseToggle?()
             } label: {
                 Image(systemName: collapseConfig.mergeIcon)
+                    .contentTransition(.symbolEffect(.replace))
             }
             .buttonStyle(.glass(style: .iconOnly()))
             .matchedGeometryEffect(
@@ -405,15 +408,16 @@ private struct EdgeGlassContainer: View {
 
     /// The alignment edge for accessory overlay.
     /// When collapsed, uses center alignment to properly align with toolbar.
+    /// When expanded, aligns to the same edge so offset calculation is straightforward.
     private var accessoryAlignment: Alignment {
         if isCollapsed && edge == .bottom {
             return .center
         }
         switch edge {
-        case .bottom: return .top
-        case .top: return .bottom
-        case .leading: return .trailing
-        case .trailing: return .leading
+        case .bottom: return .bottom
+        case .top: return .top
+        case .leading: return .leading
+        case .trailing: return .trailing
         }
     }
 
@@ -435,9 +439,10 @@ private struct EdgeGlassContainer: View {
         GlassMetrics(density: density, context: accessorySizeContext)
     }
 
-    /// Positions accessory using offset from measured toolbar size.
-    /// - offset < 0: overlap (accessory moves toward toolbar)
-    /// - offset > 0: separation (accessory moves away from toolbar)
+    /// Positions accessory using offset from toolbar edge.
+    /// - offset = 0: accessory bottom touches primary top (no gap)
+    /// - offset > 0: gap between accessory and primary
+    /// - offset < 0: accessory overlaps primary
     @ViewBuilder
     private func accessoryView(content: AnyView, offset: CGFloat, index: Int) -> some View {
         content
@@ -459,48 +464,38 @@ private struct EdgeGlassContainer: View {
         return toolbarSize
     }
 
-    /// Default spacing between accessory and primary content (constant, density-independent).
-    private let defaultAccessorySpacing: CGFloat = 12
-
-    /// Calculates offset to position accessory outside toolbar bounds.
+    /// Calculates offset to position accessory relative to primary toolbar.
     /// When collapsed, accessory aligns with the merge icon.
     ///
-    /// - Parameter userOffset: User-specified offset adjustment.
-    ///   - Positive values add separation (accessory moves away from primary).
-    ///   - Negative values reduce separation (accessory moves toward primary / overlaps).
+    /// - Parameter userOffset: Gap between accessory and primary toolbar in points.
+    ///   - Zero = accessory bottom touches primary top (no gap)
+    ///   - Positive = gap between accessory and primary
+    ///   - Negative = accessory overlaps primary ("melting" effect)
     private func accessoryOffset(_ userOffset: CGFloat) -> CGSize {
         // When collapsed, accessory aligns with the merge icon position
         if isCollapsed {
             return collapsedAccessoryOffset
         }
 
-        let accessoryHeight = accessorySizeContext.containerHeight
-
-        // Base offset positions accessory with default 12pt spacing from primary.
-        // The overlay places accessory at the primary's edge via alignment.
-        // We move it out by (accessoryHeight + defaultSpacing) to achieve the gap.
+        // Accessory starts at same edge as primary (e.g., both at bottom)
+        // Move by toolbar size to position accessory's near edge at primary's far edge,
+        // then add user offset for gap/overlap
         switch edge {
         case .bottom:
-            // Move accessory up to create gap above primary
-            // userOffset > 0: more separation (subtract to move further up)
-            // userOffset < 0: less separation / overlap (subtract to move closer)
-            let baseOffset = -(accessoryHeight + defaultAccessorySpacing)
-            return CGSize(width: 0, height: baseOffset - userOffset)
+            // Move up by toolbar height + user offset
+            return CGSize(width: 0, height: -(effectiveToolbarSize + userOffset))
 
         case .top:
-            // Move accessory down to create gap below primary
-            let baseOffset = accessoryHeight + defaultAccessorySpacing
-            return CGSize(width: 0, height: baseOffset + userOffset)
+            // Move down by toolbar height + user offset
+            return CGSize(width: 0, height: effectiveToolbarSize + userOffset)
 
         case .leading:
-            // Move accessory right to create gap beside primary
-            let baseOffset = accessoryHeight + defaultAccessorySpacing
-            return CGSize(width: baseOffset + userOffset, height: 0)
+            // Move right by toolbar width + user offset
+            return CGSize(width: effectiveToolbarSize + userOffset, height: 0)
 
         case .trailing:
-            // Move accessory left to create gap beside primary
-            let baseOffset = -(accessoryHeight + defaultAccessorySpacing)
-            return CGSize(width: baseOffset - userOffset, height: 0)
+            // Move left by toolbar width + user offset
+            return CGSize(width: -(effectiveToolbarSize + userOffset), height: 0)
         }
     }
 

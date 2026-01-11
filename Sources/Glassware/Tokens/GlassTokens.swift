@@ -88,19 +88,37 @@ public enum GlassTokens: Sendable {
 
     // MARK: - Animation Values
 
-    /// Animation duration tokens.
+    /// Animation tokens for consistent motion across the toolkit.
     public enum Animation: Sendable {
-        /// Duration for selection state changes.
-        public static let selectionDuration: Double = 0.25
-
-        /// Duration for item state changes.
-        public static let itemDuration: Double = 0.2
-
         /// Duration for press feedback.
         public static let pressDuration: Double = 0.1
 
+        /// Duration for content transitions (opacity, interpolate).
+        public static let contentTransitionDuration: Double = 0.2
+
+        /// Duration for disabled state transitions.
+        public static let disabledTransitionDuration: Double = 0.15
+
         /// Scale factor for action button press state.
         public static let pressedScale: CGFloat = 0.85
+
+        /// Spring response for selection changes (segmented picker, tabs).
+        public static let selectionSpringResponse: Double = 0.35
+
+        /// Spring damping for selection changes.
+        public static let selectionSpringDamping: Double = 0.7
+
+        /// Spring response for press feedback.
+        public static let pressSpringResponse: Double = 0.2
+
+        /// Spring damping for press feedback.
+        public static let pressSpringDamping: Double = 0.7
+
+        /// Spring response for collapse/expand animations.
+        public static let collapseSpringResponse: Double = 0.35
+
+        /// Spring bounce for collapse/expand animations.
+        public static let collapseSpringBounce: Double = 0.2
     }
 
     // MARK: - Typography Values
