@@ -315,13 +315,7 @@ public struct GlassProminentButtonStyle: ButtonStyle {
             .sensoryFeedback(.selection, trigger: configuration.isPressed) { _, newValue in
                 newValue
             }
-            .animation(backgroundAnimation, value: configuration.isPressed)
             .animation(disabledAnimation, value: isEnabled)
-    }
-
-    /// Animation for background press effects (scale, opacity).
-    private var backgroundAnimation: Animation? {
-        reduceMotion ? nil : .easeOut(duration: GlassTokens.Animation.pressDuration)
     }
 
     /// Animation for disabled state transitions.
@@ -392,11 +386,9 @@ public struct GlassProminentButtonStyle: ButtonStyle {
         if role == .destructive {
             DestructiveThumb(shape: shape)
                 .opacity(isPressed ? 0.8 : 1)
-                .scaleEffect(isPressed ? GlassTokens.Animation.pressedScale : 1.0)
         } else {
             SelectionThumb(shape: shape)
                 .opacity(isPressed ? 0.8 : 1)
-                .scaleEffect(isPressed ? GlassTokens.Animation.pressedScale : 1.0)
         }
     }
 

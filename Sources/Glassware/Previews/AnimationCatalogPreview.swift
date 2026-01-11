@@ -267,18 +267,9 @@ private struct AnimationTokensPreview: View {
                 tokenRow("Disabled Transition", "\(GlassTokens.Animation.disabledTransitionDuration)s")
             }
 
-            Section("Scale") {
-                tokenRow("Pressed Scale", "\(GlassTokens.Animation.pressedScale)")
-            }
-
             Section("Spring - Selection") {
                 tokenRow("Response", "\(GlassTokens.Animation.selectionSpringResponse)")
                 tokenRow("Damping", "\(GlassTokens.Animation.selectionSpringDamping)")
-            }
-
-            Section("Spring - Press") {
-                tokenRow("Response", "\(GlassTokens.Animation.pressSpringResponse)")
-                tokenRow("Damping", "\(GlassTokens.Animation.pressSpringDamping)")
             }
 
             Section("Spring - Collapse") {

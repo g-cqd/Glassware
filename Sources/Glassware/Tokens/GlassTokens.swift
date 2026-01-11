@@ -99,20 +99,11 @@ public enum GlassTokens: Sendable {
         /// Duration for disabled state transitions.
         public static let disabledTransitionDuration: Double = 0.15
 
-        /// Scale factor for action button press state.
-        public static let pressedScale: CGFloat = 0.85
-
         /// Spring response for selection changes (segmented picker, tabs).
         public static let selectionSpringResponse: Double = 0.35
 
         /// Spring damping for selection changes.
         public static let selectionSpringDamping: Double = 0.7
-
-        /// Spring response for press feedback.
-        public static let pressSpringResponse: Double = 0.2
-
-        /// Spring damping for press feedback.
-        public static let pressSpringDamping: Double = 0.7
 
         /// Spring response for collapse/expand animations.
         public static let collapseSpringResponse: Double = 0.35
