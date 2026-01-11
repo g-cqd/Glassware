@@ -7,6 +7,77 @@
 
 import SwiftUI
 
+// MARK: - Item Sizing
+
+/// How items are sized within a segmented picker.
+public enum SegmentedPickerItemSizing: Sendable, Equatable {
+    /// Items are distributed evenly across available space.
+    case even
+    /// Each item gets its ideal size.
+    case adaptive
+    /// All items use a fixed size.
+    case fixed(CGFloat)
+    
+    nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+        switch (lhs, rhs) {
+            case (.even, .even), (.adaptive, .adaptive):
+                true
+            case (.fixed(let lhsSize), .fixed(let rhsSize)):
+                lhsSize == rhsSize
+            default:
+                false
+        }
+    }
+}
+
+// MARK: - Container Sizing
+
+/// How the segmented picker container is sized.
+public enum SegmentedPickerContainerSizing: Sendable {
+    /// Picker fits its content (uses fixedSize).
+    case fit
+    /// Picker fills available space.
+    case fill
+}
+
+extension EnvironmentValues {
+    /// Spacing between items in a segmented picker.
+    @Entry var segmentedPickerSpacing: CGFloat = 0
+
+    /// How items are sized within the picker.
+    @Entry var segmentedPickerItemSizing: SegmentedPickerItemSizing = .even
+
+    /// How the picker container is sized.
+    @Entry var segmentedPickerContainerSizing: SegmentedPickerContainerSizing = .fit
+}
+
+// MARK: - View Modifier
+
+public extension View {
+    /// Configures the layout style for a segmented picker.
+    ///
+    /// - Parameters:
+    ///   - spacing: Spacing between items. Default is 0.
+    ///   - itemSizing: How items are sized. Default is `.even`.
+    ///   - containerSizing: How the container is sized. Default is `.fit`.
+    func segmentedPickerStyle(
+        spacing: CGFloat? = nil,
+        itemSizing: SegmentedPickerItemSizing? = nil,
+        containerSizing: SegmentedPickerContainerSizing? = nil
+    ) -> some View {
+        self
+            .transformEnvironment(\.segmentedPickerSpacing) { value in
+                if let spacing { value = spacing }
+            }
+            .transformEnvironment(\.segmentedPickerItemSizing) { value in
+                if let itemSizing { value = itemSizing }
+            }
+            .transformEnvironment(\.segmentedPickerContainerSizing) { value in
+                if let containerSizing { value = containerSizing }
+            }
+    }
+}
+
 // MARK: - Segmented Picker
 
 /// A custom segmented picker with a draggable selection capsule.
@@ -37,10 +108,10 @@ import SwiftUI
 public struct SegmentedPicker<Value: Hashable, Content: View>: View {
     @Binding var selection: Value
     let style: SegmentedPickerStyle
-    let axis: SegmentedPickerAxis
+    let axis: Axis
     @ViewBuilder let content: () -> Content
 
-    @State private var childSizes: [Int: CGSize] = [:]
+    @State private var cellFrames: [Int: CGRect] = [:]
     @State private var dragOffset: CGFloat = 0
     @State private var isDragging = false
 
@@ -49,11 +120,14 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.glassEdge) private var toolbarEdge
     @Environment(\.glassContainerContext) private var containerContext
+    @Environment(\.segmentedPickerSpacing) private var spacing
+    @Environment(\.segmentedPickerItemSizing) private var itemSizing
+    @Environment(\.segmentedPickerContainerSizing) private var containerSizing
 
     public init(
         selection: Binding<Value>,
         style: SegmentedPickerStyle,
-        axis: SegmentedPickerAxis = .horizontal,
+        axis: Axis = .horizontal,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self._selection = selection
@@ -67,7 +141,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
     }
 
     /// Effective axis, accounting for vertical toolbar edge placement.
-    private var effectiveAxis: SegmentedPickerAxis {
+    private var effectiveAxis: Axis {
         toolbarEdge.isVertical ? .vertical : axis
     }
 
@@ -85,11 +159,14 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
             selection: $selection,
             style: effectiveStyle,
             axis: effectiveAxis,
-            childSizes: $childSizes,
+            cellFrames: $cellFrames,
             dragOffset: $dragOffset,
             isDragging: $isDragging,
             reduceMotion: reduceMotion,
-            metrics: metrics
+            metrics: metrics,
+            spacing: spacing,
+            itemSizing: itemSizing,
+            containerSizing: containerSizing
         )) {
             content()
         }
@@ -102,65 +179,183 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
 private struct SegmentedPickerRoot<Value: Hashable>: _VariadicView.UnaryViewRoot {
     @Binding var selection: Value
     let style: SegmentedPickerStyle
-    let axis: SegmentedPickerAxis
-    @Binding var childSizes: [Int: CGSize]
+    let axis: Axis
+    @Binding var cellFrames: [Int: CGRect]
     @Binding var dragOffset: CGFloat
     @Binding var isDragging: Bool
     let reduceMotion: Bool
     let metrics: GlassMetrics
+    let spacing: CGFloat
+    let itemSizing: SegmentedPickerItemSizing
+    let containerSizing: SegmentedPickerContainerSizing
 
     @MainActor
     func body(children: _VariadicView.Children) -> some View {
-        SegmentedPickerLayout(
+        SegmentedPickerContent(
             selection: $selection,
             style: style,
             axis: axis,
-            childSizes: $childSizes,
+            cellFrames: $cellFrames,
             dragOffset: $dragOffset,
             isDragging: $isDragging,
             reduceMotion: reduceMotion,
             metrics: metrics,
+            spacing: spacing,
+            itemSizing: itemSizing,
+            containerSizing: containerSizing,
             children: children
         )
     }
 }
 
-// MARK: - Layout View
+// MARK: - Custom Layout
 
-private struct SegmentedPickerLayout<Value: Hashable>: View {
+/// Layout that distributes children along an axis with configurable item sizing.
+private struct SegmentedPickerAxisLayout: Layout {
+    let axis: Axis
+    let itemSizing: SegmentedPickerItemSizing
+    let spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard !subviews.isEmpty else { return .zero }
+
+        let idealSizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let totalSpacing = spacing * CGFloat(max(0, subviews.count - 1))
+
+        if axis == .horizontal {
+            let maxHeight = idealSizes.map(\.height).max() ?? 0
+            switch itemSizing {
+            case .adaptive:
+                let totalWidth = idealSizes.map(\.width).reduce(0, +) + totalSpacing
+                return CGSize(width: totalWidth, height: maxHeight)
+            case .even:
+                let proposedWidth = proposal.width ?? (idealSizes.map(\.width).reduce(0, +) + totalSpacing)
+                return CGSize(width: proposedWidth, height: maxHeight)
+            case .fixed(let fixedWidth):
+                let totalWidth = fixedWidth * CGFloat(subviews.count) + totalSpacing
+                return CGSize(width: totalWidth, height: maxHeight)
+            }
+        } else {
+            let maxWidth = idealSizes.map(\.width).max() ?? 0
+            switch itemSizing {
+            case .adaptive:
+                let totalHeight = idealSizes.map(\.height).reduce(0, +) + totalSpacing
+                return CGSize(width: maxWidth, height: totalHeight)
+            case .even:
+                let proposedHeight = proposal.height ?? (idealSizes.map(\.height).reduce(0, +) + totalSpacing)
+                return CGSize(width: maxWidth, height: proposedHeight)
+            case .fixed(let fixedHeight):
+                let totalHeight = fixedHeight * CGFloat(subviews.count) + totalSpacing
+                return CGSize(width: maxWidth, height: totalHeight)
+            }
+        }
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard !subviews.isEmpty else { return }
+
+        let count = subviews.count
+        let idealSizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let totalSpacing = spacing * CGFloat(max(0, count - 1))
+
+        if axis == .horizontal {
+            switch itemSizing {
+            case .adaptive:
+                var x = bounds.minX
+                for (index, subview) in subviews.enumerated() {
+                    let width = idealSizes[index].width
+                    subview.place(
+                        at: CGPoint(x: x + width / 2, y: bounds.midY),
+                        anchor: .center,
+                        proposal: ProposedViewSize(width: width, height: bounds.height)
+                    )
+                    x += width + spacing
+                }
+            case .even:
+                let cellWidth = (bounds.width - totalSpacing) / CGFloat(count)
+                for (index, subview) in subviews.enumerated() {
+                    let x = bounds.minX + CGFloat(index) * (cellWidth + spacing)
+                    subview.place(
+                        at: CGPoint(x: x + cellWidth / 2, y: bounds.midY),
+                        anchor: .center,
+                        proposal: ProposedViewSize(width: cellWidth, height: bounds.height)
+                    )
+                }
+            case .fixed(let fixedWidth):
+                for (index, subview) in subviews.enumerated() {
+                    let x = bounds.minX + CGFloat(index) * (fixedWidth + spacing)
+                    subview.place(
+                        at: CGPoint(x: x + fixedWidth / 2, y: bounds.midY),
+                        anchor: .center,
+                        proposal: ProposedViewSize(width: fixedWidth, height: bounds.height)
+                    )
+                }
+            }
+        } else {
+            switch itemSizing {
+            case .adaptive:
+                var y = bounds.minY
+                for (index, subview) in subviews.enumerated() {
+                    let height = idealSizes[index].height
+                    subview.place(
+                        at: CGPoint(x: bounds.midX, y: y + height / 2),
+                        anchor: .center,
+                        proposal: ProposedViewSize(width: bounds.width, height: height)
+                    )
+                    y += height + spacing
+                }
+            case .even:
+                let cellHeight = (bounds.height - totalSpacing) / CGFloat(count)
+                for (index, subview) in subviews.enumerated() {
+                    let y = bounds.minY + CGFloat(index) * (cellHeight + spacing)
+                    subview.place(
+                        at: CGPoint(x: bounds.midX, y: y + cellHeight / 2),
+                        anchor: .center,
+                        proposal: ProposedViewSize(width: bounds.width, height: cellHeight)
+                    )
+                }
+            case .fixed(let fixedHeight):
+                for (index, subview) in subviews.enumerated() {
+                    let y = bounds.minY + CGFloat(index) * (fixedHeight + spacing)
+                    subview.place(
+                        at: CGPoint(x: bounds.midX, y: y + fixedHeight / 2),
+                        anchor: .center,
+                        proposal: ProposedViewSize(width: bounds.width, height: fixedHeight)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Preference Key for Cell Frames
+
+private struct SegmentedPickerCellFramePreference: PreferenceKey {
+    nonisolated(unsafe) static var defaultValue: [Int: CGRect] = [:]
+
+    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
+
+// MARK: - Content View
+
+private struct SegmentedPickerContent<Value: Hashable>: View {
     @Binding var selection: Value
     let style: SegmentedPickerStyle
-    let axis: SegmentedPickerAxis
-    @Binding var childSizes: [Int: CGSize]
+    let axis: Axis
+    @Binding var cellFrames: [Int: CGRect]
     @Binding var dragOffset: CGFloat
     @Binding var isDragging: Bool
     let reduceMotion: Bool
     let metrics: GlassMetrics
+    let spacing: CGFloat
+    let itemSizing: SegmentedPickerItemSizing
+    let containerSizing: SegmentedPickerContainerSizing
     let children: _VariadicView.Children
 
-    private var layout: AnyLayout {
-        switch axis {
-        case .horizontal:
-            AnyLayout(HStackLayout(spacing: 0))
-        case .vertical:
-            AnyLayout(VStackLayout(spacing: 0))
-        }
-    }
-
-    /// Computes the frame for a child at the given index based on accumulated sizes.
-    private func frameForChild(at index: Int) -> CGRect {
-        var origin: CGFloat = 0
-        for i in 0..<index {
-            if let size = childSizes[i] {
-                origin += axis == .horizontal ? size.width : size.height
-            }
-        }
-        let size = childSizes[index] ?? .zero
-        if axis == .horizontal {
-            return CGRect(x: origin, y: 0, width: size.width, height: size.height)
-        } else {
-            return CGRect(x: 0, y: origin, width: size.width, height: size.height)
-        }
+    private var layout: SegmentedPickerAxisLayout {
+        SegmentedPickerAxisLayout(axis: axis, itemSizing: itemSizing, spacing: spacing)
     }
 
     /// Index of the selected child, derived from trait values.
@@ -176,14 +371,16 @@ private struct SegmentedPickerLayout<Value: Hashable>: View {
     /// Frame of the currently selected item.
     private var selectedFrame: CGRect? {
         guard let index = selectedIndex else { return nil }
-        return frameForChild(at: index)
+        return cellFrames[index]
     }
 
     /// Drag bounds based on item positions.
     private var dragBounds: ClosedRange<CGFloat> {
-        guard let selectedFrame, !children.isEmpty else { return 0...0 }
-        let firstFrame = frameForChild(at: 0)
-        let lastFrame = frameForChild(at: children.count - 1)
+        guard let selectedFrame, !children.isEmpty,
+              let firstFrame = cellFrames[0],
+              let lastFrame = cellFrames[children.count - 1] else {
+            return 0...0
+        }
 
         if axis == .horizontal {
             let minOffset = firstFrame.minX - selectedFrame.minX
@@ -212,83 +409,123 @@ private struct SegmentedPickerLayout<Value: Hashable>: View {
         }
     }
 
-    /// Size of the thumb.
+    /// Size of the thumb (from selected cell frame).
     private var thumbSize: CGSize {
         selectedFrame?.size ?? .zero
     }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Layer 1: Secondary styled content (always visible)
-            layout {
-                ForEach(Array(children.enumerated()), id: \.element.id) { index, child in
-                    child
-                        .foregroundStyle(.secondary)
-                        .background {
-                            GeometryReader { geo in
-                                Color.clear
-                                    .onAppear { childSizes[index] = geo.size }
-                                    .onChange(of: geo.size) { _, newSize in childSizes[index] = newSize }
-                            }
+        // Base layer: Secondary styled content (always visible)
+        baseLayer
+            .fixedSize(
+                horizontal: containerSizing == .fit && axis == .horizontal,
+                vertical: containerSizing == .fit && axis == .vertical
+            )
+            .coordinateSpace(name: "picker")
+            .onPreferenceChange(SegmentedPickerCellFramePreference.self) { frames in
+                cellFrames = frames
+            }
+            .overlay(alignment: .topLeading) { thumbLayer }
+            .overlay { maskedLayer }
+            .overlay { hittableLayer }
+            .overlay(alignment: .topLeading) { invisibleDraggableRegion }
+            .animation(
+                reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
+                value: selectedIndex
+            )
+            .animation(
+                reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
+                value: dragOffset
+            )
+            .accessibilityElement(children: .combine)
+            .accessibilityAdjustableAction { direction in
+                adjustSelection(direction: direction)
+            }
+            .accessibilityValue(accessibilityValueText)
+    }
+    
+    private func fixedSize(for axis: Axis) -> Bool {
+        itemSizing == .adaptive && self.axis == axis
+    }
+    
+    @ViewBuilder
+    private var baseLayer: some View {
+        layout {
+            ForEach(Array(children.enumerated()), id: \.element.id) { index, child in
+                child
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .fixedSize(
+                        horizontal: fixedSize(for: .horizontal),
+                        vertical: fixedSize(for: .vertical)
+                    )
+                    .background {
+                        GeometryReader { geo in
+                            Color.clear
+                                .preference(
+                                    key: SegmentedPickerCellFramePreference.self,
+                                    value: [index: geo.frame(in: .named("picker"))]
+                                )
                         }
-                }
-            }
-            .allowsHitTesting(false)
-
-            // Layer 2: Thumb
-            if usesCircleShape {
-                SelectionThumb(shape: Circle())
-                    .frame(width: thumbSize.width, height: thumbSize.height)
-                    .offset(thumbOffset)
-            } else {
-                SelectionThumb(shape: Capsule())
-                    .frame(width: thumbSize.width, height: thumbSize.height)
-                    .offset(thumbOffset)
-            }
-
-            // Layer 3: Primary styled content, masked by thumb shape
-            layout {
-                ForEach(Array(children.enumerated()), id: \.element.id) { _, child in
-                    child
-                        .foregroundStyle(.primary)
-                }
-            }
-            .allowsHitTesting(false)
-            .mask(alignment: .topLeading) {
-                Group {
-                    if usesCircleShape {
-                        Circle()
-                    } else {
-                        Capsule()
                     }
-                }
-                .frame(width: thumbSize.width, height: thumbSize.height)
-                .offset(thumbOffset)
             }
-
-            // Layer 4: Invisible hit areas for tap selection
-            hitAreas
-
-            // Layer 5: Invisible drag handle on top
-            Color.clear
+        }
+    }
+    
+    @ViewBuilder
+    private var thumbLayer: some View {
+        if usesCircleShape {
+            SelectionThumb(shape: .circle)
                 .frame(width: thumbSize.width, height: thumbSize.height)
-                .contentShape(.rect)
                 .offset(thumbOffset)
-                .gesture(dragGesture)
+        } else {
+            SelectionThumb(shape: .capsule)
+                .frame(width: thumbSize.width, height: thumbSize.height)
+                .offset(thumbOffset)
         }
-        .animation(
-            reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
-            value: selectedIndex
-        )
-        .animation(
-            reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
-            value: dragOffset
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityAdjustableAction { direction in
-            adjustSelection(direction: direction)
+    }
+    
+    private var maskedLayer: some View {
+        // Primary styled content, masked by thumb shape
+        layout {
+            ForEach(Array(children.enumerated()), id: \.element.id) { _, child in
+                child.foregroundStyle(.primary)
+            }
         }
-        .accessibilityValue(accessibilityValueText)
+        .allowsHitTesting(false)
+        .mask(alignment: .topLeading) {
+            Group {
+                if usesCircleShape {
+                    Circle()
+                } else {
+                    Capsule()
+                }
+            }
+            .frame(width: thumbSize.width, height: thumbSize.height)
+            .offset(thumbOffset)
+        }
+    }
+    
+    private var hittableLayer: some View {
+        layout {
+            ForEach(Array(children.enumerated()), id: \.element.id) { index, _ in
+                Color.clear
+                    .contentShape(.rect)
+                    .onTapGesture {
+                        if let value = children[index][SegmentedPickerValueTrait<Value>.self] {
+                            selection = value
+                        }
+                    }
+            }
+        }
+    }
+    
+    private var invisibleDraggableRegion: some View {
+        Color.clear
+            .frame(width: thumbSize.width, height: thumbSize.height)
+            .contentShape(.rect)
+            .offset(thumbOffset)
+            .gesture(dragGesture)
     }
 
     // MARK: - Accessibility
@@ -354,7 +591,7 @@ private struct SegmentedPickerLayout<Value: Hashable>: View {
                 var closestDistance: CGFloat = .infinity
 
                 for i in 0..<children.count {
-                    let frame = frameForChild(at: i)
+                    guard let frame = cellFrames[i] else { continue }
                     let itemCenter = axis == .horizontal ? frame.midX : frame.midY
                     let distance = abs(itemCenter - endPosition)
                     if distance < closestDistance {
@@ -371,24 +608,6 @@ private struct SegmentedPickerLayout<Value: Hashable>: View {
                     selection = value
                 }
             }
-    }
-
-    // MARK: - Hit Areas
-
-    @ViewBuilder
-    private var hitAreas: some View {
-        ForEach(0..<children.count, id: \.self) { index in
-            let frame = frameForChild(at: index)
-            Color.clear
-                .frame(width: frame.width, height: frame.height)
-                .contentShape(.rect)
-                .offset(x: frame.minX, y: frame.minY)
-                .onTapGesture {
-                    if let value = children[index][SegmentedPickerValueTrait<Value>.self] {
-                        selection = value
-                    }
-                }
-        }
     }
 }
 

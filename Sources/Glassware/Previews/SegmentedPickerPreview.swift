@@ -58,6 +58,11 @@ private struct InteractivePickerPreview: View {
                     }
                 }
             }
+            .segmentedPickerStyle(
+                spacing: 0,
+                itemSizing: .even,
+                containerSizing: .fit
+            )
             .padding(3)
 
 
@@ -169,6 +174,10 @@ private struct PickerInToolbarPreview: View {
                             }
                         }
                     }
+                    .segmentedPickerStyle(
+                        itemSizing: .adaptive,
+                        containerSizing: .fill
+                    )
                 },
                 trailing: {
                     Button {} label: {
