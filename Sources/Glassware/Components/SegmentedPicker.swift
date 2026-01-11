@@ -390,9 +390,10 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
         }
     }
 
-    /// Whether the style uses a circle shape.
+    /// Whether the thumb uses a circle shape.
+    /// Circle for iconOnly with fit sizing, capsule for all other cases.
     private var usesCircleShape: Bool {
-        style == .iconOnly
+        style == .iconOnly && !sizing.fills
     }
 
     /// Offset for the thumb position.
