@@ -58,11 +58,7 @@ private struct InteractivePickerPreview: View {
                     }
                 }
             }
-            .segmentedPickerStyle(
-                spacing: 0,
-                itemSizing: .even,
-                containerSizing: .fit
-            )
+            .segmentedPickerStyle(spacing: 0, sizing: .evenFit)
             .padding(3)
 
 
@@ -174,16 +170,13 @@ private struct PickerInToolbarPreview: View {
                             }
                         }
                     }
-                    .segmentedPickerStyle(
-                        itemSizing: .adaptive,
-                        containerSizing: .fill
-                    )
+                    .segmentedPickerStyle(sizing: .evenFill)
                 },
                 trailing: {
                     Button {} label: {
                         Label("More", systemImage: "ellipsis")
                     }
-                    .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                    .buttonStyle(.glass(intent: .action, style: .iconOnly))
                 }
             )
     }
@@ -511,3 +504,4 @@ private struct VerticalStyleComparisonView: View {
             .foregroundStyle(.tertiary)
     }
 }
+

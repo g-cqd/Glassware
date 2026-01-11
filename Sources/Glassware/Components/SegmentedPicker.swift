@@ -7,48 +7,57 @@
 
 import SwiftUI
 
-// MARK: - Item Sizing
+// MARK: - Sizing
 
-/// How items are sized within a segmented picker.
-public enum SegmentedPickerItemSizing: Sendable, Equatable {
-    /// Items are distributed evenly across available space.
-    case even
-    /// Each item gets its ideal size.
-    case adaptive
+/// Combined sizing configuration for segmented picker items and container.
+public enum SegmentedPickerSizing: Sendable, Equatable {
+    /// Items are distributed evenly, container fits content.
+    case evenFit
+    /// Items are distributed evenly, container expands to fill available space.
+    case evenFill
+    /// Each item gets its ideal size, container fits content.
+    case adaptiveFit
+    /// Each item gets its ideal size, container expands to fill available space.
+    case adaptiveFill
     /// All items use a fixed size.
     case fixed(CGFloat)
-    
-    nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
-        switch (lhs, rhs) {
-            case (.even, .even), (.adaptive, .adaptive):
-                true
-            case (.fixed(let lhsSize), .fixed(let rhsSize)):
-                lhsSize == rhsSize
-            default:
-                false
+
+    /// Whether items are distributed evenly or use their ideal size.
+    var isEven: Bool {
+        switch self {
+        case .evenFit, .evenFill: true
+        case .adaptiveFit, .adaptiveFill, .fixed: false
         }
     }
-}
 
-// MARK: - Container Sizing
+    /// Whether items use their ideal (adaptive) size.
+    var isAdaptive: Bool {
+        switch self {
+        case .adaptiveFit, .adaptiveFill: true
+        case .evenFit, .evenFill, .fixed: false
+        }
+    }
 
-/// How the segmented picker container is sized.
-public enum SegmentedPickerContainerSizing: Sendable {
-    /// Picker fits its content (uses fixedSize).
-    case fit
-    /// Picker fills available space.
-    case fill
+    /// Whether the container expands to fill available space.
+    var fills: Bool {
+        switch self {
+        case .evenFill, .adaptiveFill: true
+        case .evenFit, .adaptiveFit, .fixed: false
+        }
+    }
+
+    /// Fixed width if applicable.
+    var fixedSize: CGFloat? {
+        if case .fixed(let size) = self { size } else { nil }
+    }
 }
 
 extension EnvironmentValues {
     /// Spacing between items in a segmented picker.
     @Entry var segmentedPickerSpacing: CGFloat = 0
 
-    /// How items are sized within the picker.
-    @Entry var segmentedPickerItemSizing: SegmentedPickerItemSizing = .even
-
-    /// How the picker container is sized.
-    @Entry var segmentedPickerContainerSizing: SegmentedPickerContainerSizing = .fit
+    /// How the picker and its items are sized.
+    @Entry var segmentedPickerSizing: SegmentedPickerSizing = .evenFit
 }
 
 // MARK: - View Modifier
@@ -58,22 +67,17 @@ public extension View {
     ///
     /// - Parameters:
     ///   - spacing: Spacing between items. Default is 0.
-    ///   - itemSizing: How items are sized. Default is `.even`.
-    ///   - containerSizing: How the container is sized. Default is `.fit`.
+    ///   - sizing: How items and container are sized. Default is `.evenFit`.
     func segmentedPickerStyle(
         spacing: CGFloat? = nil,
-        itemSizing: SegmentedPickerItemSizing? = nil,
-        containerSizing: SegmentedPickerContainerSizing? = nil
+        sizing: SegmentedPickerSizing? = nil
     ) -> some View {
         self
             .transformEnvironment(\.segmentedPickerSpacing) { value in
                 if let spacing { value = spacing }
             }
-            .transformEnvironment(\.segmentedPickerItemSizing) { value in
-                if let itemSizing { value = itemSizing }
-            }
-            .transformEnvironment(\.segmentedPickerContainerSizing) { value in
-                if let containerSizing { value = containerSizing }
+            .transformEnvironment(\.segmentedPickerSizing) { value in
+                if let sizing { value = sizing }
             }
     }
 }
@@ -121,8 +125,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
     @Environment(\.glassEdge) private var toolbarEdge
     @Environment(\.glassContainerContext) private var containerContext
     @Environment(\.segmentedPickerSpacing) private var spacing
-    @Environment(\.segmentedPickerItemSizing) private var itemSizing
-    @Environment(\.segmentedPickerContainerSizing) private var containerSizing
+    @Environment(\.segmentedPickerSizing) private var sizing
 
     public init(
         selection: Binding<Value>,
@@ -165,8 +168,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
             reduceMotion: reduceMotion,
             metrics: metrics,
             spacing: spacing,
-            itemSizing: itemSizing,
-            containerSizing: containerSizing
+            sizing: sizing
         )) {
             content()
         }
@@ -186,8 +188,7 @@ private struct SegmentedPickerRoot<Value: Hashable>: _VariadicView.UnaryViewRoot
     let reduceMotion: Bool
     let metrics: GlassMetrics
     let spacing: CGFloat
-    let itemSizing: SegmentedPickerItemSizing
-    let containerSizing: SegmentedPickerContainerSizing
+    let sizing: SegmentedPickerSizing
 
     @MainActor
     func body(children: _VariadicView.Children) -> some View {
@@ -201,8 +202,7 @@ private struct SegmentedPickerRoot<Value: Hashable>: _VariadicView.UnaryViewRoot
             reduceMotion: reduceMotion,
             metrics: metrics,
             spacing: spacing,
-            itemSizing: itemSizing,
-            containerSizing: containerSizing,
+            sizing: sizing,
             children: children
         )
     }
@@ -213,7 +213,7 @@ private struct SegmentedPickerRoot<Value: Hashable>: _VariadicView.UnaryViewRoot
 /// Layout that distributes children along an axis with configurable item sizing.
 private struct SegmentedPickerAxisLayout: Layout {
     let axis: Axis
-    let itemSizing: SegmentedPickerItemSizing
+    let sizing: SegmentedPickerSizing
     let spacing: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -224,30 +224,30 @@ private struct SegmentedPickerAxisLayout: Layout {
 
         if axis == .horizontal {
             let maxHeight = idealSizes.map(\.height).max() ?? 0
-            switch itemSizing {
-            case .adaptive:
+            if sizing.isAdaptive {
                 let totalWidth = idealSizes.map(\.width).reduce(0, +) + totalSpacing
                 return CGSize(width: totalWidth, height: maxHeight)
-            case .even:
+            } else if sizing.isEven {
                 let proposedWidth = proposal.width ?? (idealSizes.map(\.width).reduce(0, +) + totalSpacing)
                 return CGSize(width: proposedWidth, height: maxHeight)
-            case .fixed(let fixedWidth):
+            } else if let fixedWidth = sizing.fixedSize {
                 let totalWidth = fixedWidth * CGFloat(subviews.count) + totalSpacing
                 return CGSize(width: totalWidth, height: maxHeight)
             }
+            return .zero
         } else {
             let maxWidth = idealSizes.map(\.width).max() ?? 0
-            switch itemSizing {
-            case .adaptive:
+            if sizing.isAdaptive {
                 let totalHeight = idealSizes.map(\.height).reduce(0, +) + totalSpacing
                 return CGSize(width: maxWidth, height: totalHeight)
-            case .even:
+            } else if sizing.isEven {
                 let proposedHeight = proposal.height ?? (idealSizes.map(\.height).reduce(0, +) + totalSpacing)
                 return CGSize(width: maxWidth, height: proposedHeight)
-            case .fixed(let fixedHeight):
+            } else if let fixedHeight = sizing.fixedSize {
                 let totalHeight = fixedHeight * CGFloat(subviews.count) + totalSpacing
                 return CGSize(width: maxWidth, height: totalHeight)
             }
+            return .zero
         }
     }
 
@@ -259,8 +259,7 @@ private struct SegmentedPickerAxisLayout: Layout {
         let totalSpacing = spacing * CGFloat(max(0, count - 1))
 
         if axis == .horizontal {
-            switch itemSizing {
-            case .adaptive:
+            if sizing.isAdaptive {
                 var x = bounds.minX
                 for (index, subview) in subviews.enumerated() {
                     let width = idealSizes[index].width
@@ -271,7 +270,7 @@ private struct SegmentedPickerAxisLayout: Layout {
                     )
                     x += width + spacing
                 }
-            case .even:
+            } else if sizing.isEven {
                 let cellWidth = (bounds.width - totalSpacing) / CGFloat(count)
                 for (index, subview) in subviews.enumerated() {
                     let x = bounds.minX + CGFloat(index) * (cellWidth + spacing)
@@ -281,7 +280,7 @@ private struct SegmentedPickerAxisLayout: Layout {
                         proposal: ProposedViewSize(width: cellWidth, height: bounds.height)
                     )
                 }
-            case .fixed(let fixedWidth):
+            } else if let fixedWidth = sizing.fixedSize {
                 for (index, subview) in subviews.enumerated() {
                     let x = bounds.minX + CGFloat(index) * (fixedWidth + spacing)
                     subview.place(
@@ -292,8 +291,7 @@ private struct SegmentedPickerAxisLayout: Layout {
                 }
             }
         } else {
-            switch itemSizing {
-            case .adaptive:
+            if sizing.isAdaptive {
                 var y = bounds.minY
                 for (index, subview) in subviews.enumerated() {
                     let height = idealSizes[index].height
@@ -304,7 +302,7 @@ private struct SegmentedPickerAxisLayout: Layout {
                     )
                     y += height + spacing
                 }
-            case .even:
+            } else if sizing.isEven {
                 let cellHeight = (bounds.height - totalSpacing) / CGFloat(count)
                 for (index, subview) in subviews.enumerated() {
                     let y = bounds.minY + CGFloat(index) * (cellHeight + spacing)
@@ -314,7 +312,7 @@ private struct SegmentedPickerAxisLayout: Layout {
                         proposal: ProposedViewSize(width: bounds.width, height: cellHeight)
                     )
                 }
-            case .fixed(let fixedHeight):
+            } else if let fixedHeight = sizing.fixedSize {
                 for (index, subview) in subviews.enumerated() {
                     let y = bounds.minY + CGFloat(index) * (fixedHeight + spacing)
                     subview.place(
@@ -350,18 +348,17 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
     let reduceMotion: Bool
     let metrics: GlassMetrics
     let spacing: CGFloat
-    let itemSizing: SegmentedPickerItemSizing
-    let containerSizing: SegmentedPickerContainerSizing
+    let sizing: SegmentedPickerSizing
     let children: _VariadicView.Children
 
     private var layout: SegmentedPickerAxisLayout {
-        SegmentedPickerAxisLayout(axis: axis, itemSizing: itemSizing, spacing: spacing)
+        SegmentedPickerAxisLayout(axis: axis, sizing: sizing, spacing: spacing)
     }
 
-    /// Index of the selected child, derived from trait values.
+    /// Index of the selected child, derived from tag values via reflection.
     private var selectedIndex: Int? {
         for (index, child) in children.enumerated() {
-            if let value = child[SegmentedPickerValueTrait<Value>.self], value == selection {
+            if let value: Value = try? child.getTag(), value == selection {
                 return index
             }
         }
@@ -417,9 +414,13 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
     var body: some View {
         // Base layer: Secondary styled content (always visible)
         baseLayer
+            .frame(
+                maxWidth: sizing.fills && axis == .horizontal ? .infinity : nil,
+                maxHeight: sizing.fills && axis == .vertical ? .infinity : nil
+            )
             .fixedSize(
-                horizontal: containerSizing == .fit && axis == .horizontal,
-                vertical: containerSizing == .fit && axis == .vertical
+                horizontal: !sizing.fills && axis == .horizontal,
+                vertical: !sizing.fills && axis == .vertical
             )
             .coordinateSpace(name: "picker")
             .onPreferenceChange(SegmentedPickerCellFramePreference.self) { frames in
@@ -443,9 +444,9 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
             }
             .accessibilityValue(accessibilityValueText)
     }
-    
-    private func fixedSize(for axis: Axis) -> Bool {
-        itemSizing == .adaptive && self.axis == axis
+
+    private func usesAdaptiveSize(for axis: Axis) -> Bool {
+        sizing.isAdaptive && self.axis == axis
     }
     
     @ViewBuilder
@@ -456,8 +457,8 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .fixedSize(
-                        horizontal: fixedSize(for: .horizontal),
-                        vertical: fixedSize(for: .vertical)
+                        horizontal: usesAdaptiveSize(for: .horizontal),
+                        vertical: usesAdaptiveSize(for: .vertical)
                     )
                     .background {
                         GeometryReader { geo in
@@ -508,11 +509,11 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
     
     private var hittableLayer: some View {
         layout {
-            ForEach(Array(children.enumerated()), id: \.element.id) { index, _ in
+            ForEach(Array(children.enumerated()), id: \.element.id) { index, child in
                 Color.clear
                     .contentShape(.rect)
                     .onTapGesture {
-                        if let value = children[index][SegmentedPickerValueTrait<Value>.self] {
+                        if let value: Value = try? child.getTag() {
                             selection = value
                         }
                     }
@@ -545,14 +546,14 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
         case .increment:
             let nextIndex = currentIndex + 1
             if nextIndex < children.count {
-                if let value = children[nextIndex][SegmentedPickerValueTrait<Value>.self] {
+                if let value: Value = try? children[nextIndex].getTag() {
                     selection = value
                 }
             }
         case .decrement:
             let prevIndex = currentIndex - 1
             if prevIndex >= 0 {
-                if let value = children[prevIndex][SegmentedPickerValueTrait<Value>.self] {
+                if let value: Value = try? children[prevIndex].getTag() {
                     selection = value
                 }
             }
@@ -604,15 +605,44 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
                 dragOffset = 0
 
                 if let index = closestIndex,
-                   let value = children[index][SegmentedPickerValueTrait<Value>.self] {
+                   let value: Value = try? children[index].getTag() {
                     selection = value
                 }
             }
     }
 }
 
-// MARK: - View Trait for Value
+// MARK: - Tag Extraction
 
-struct SegmentedPickerValueTrait<Value: Hashable>: _ViewTraitKey {
-    static var defaultValue: Value? { nil }
+extension View {
+    /// Extracts the tag value from a variadic view child using reflection.
+    /// Path: traits → storage → (array) → value → tagged
+    func getTag<TagType: Hashable>() throws -> TagType {
+        let mirror = Mirror(reflecting: self)
+
+        // Get traits.storage array
+        guard let storage = mirror.descendant("traits", "storage") else {
+            throw TagExtractionError.traitsNotFound
+        }
+
+        // Iterate through the storage array to find tag trait
+        let storageMirror = Mirror(reflecting: storage)
+        for child in storageMirror.children {
+            // Look for value.tagged path in each trait
+            let traitMirror = Mirror(reflecting: child.value)
+            if let tagValue = traitMirror.descendant("value", "tagged") {
+                // Try to cast to our expected type
+                if let tag = tagValue as? TagType {
+                    return tag
+                }
+            }
+        }
+
+        throw TagExtractionError.tagNotFound
+    }
+}
+
+enum TagExtractionError: Error {
+    case traitsNotFound
+    case tagNotFound
 }

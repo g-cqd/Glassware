@@ -55,8 +55,8 @@ public struct SegmentedPickerItem<Value: Hashable, Label: View>: View {
             .padding(metrics.effectiveComponentPadding)
             // Items themselves are not tappable
             .allowsHitTesting(false)
-            // Pass value to parent via trait
-            ._trait(SegmentedPickerValueTrait<Value>.self, value)
+            // Pass value to parent via SwiftUI's tag modifier
+            .tag(value)
     }
 
     @ViewBuilder

@@ -4,6 +4,7 @@
 //
 
 import Testing
+import SwiftUI
 @testable import Glassware
 
 @Suite("GlassMetrics Tests")
