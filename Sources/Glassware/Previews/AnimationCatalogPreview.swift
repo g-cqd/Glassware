@@ -262,7 +262,6 @@ private struct AnimationTokensPreview: View {
     var body: some View {
         List {
             Section("Durations") {
-                tokenRow("Press Duration", "\(GlassTokens.Animation.pressDuration)s")
                 tokenRow("Content Transition", "\(GlassTokens.Animation.contentTransitionDuration)s")
                 tokenRow("Disabled Transition", "\(GlassTokens.Animation.disabledTransitionDuration)s")
             }

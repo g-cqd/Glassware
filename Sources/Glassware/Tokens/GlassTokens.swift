@@ -90,9 +90,6 @@ public enum GlassTokens: Sendable {
 
     /// Animation tokens for consistent motion across the toolkit.
     public enum Animation: Sendable {
-        /// Duration for press feedback.
-        public static let pressDuration: Double = 0.1
-
         /// Duration for content transitions (opacity, interpolate).
         public static let contentTransitionDuration: Double = 0.2
 
