@@ -137,18 +137,19 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
 
         return closestValue
     }
+    
+    private var layout: some Layout {
+        switch effectiveAxis {
+            case .horizontal:
+                AnyLayout(HStackLayout(spacing: 0))
+            case .vertical:
+                AnyLayout(VStackLayout(spacing: 0))
+        }
+    }
 
     public var body: some View {
-        Group {
-            if effectiveAxis == .horizontal {
-                HStack(spacing: 0) {
-                    content()
-                }
-            } else {
-                VStack(spacing: 0) {
-                    content()
-                }
-            }
+        layout {
+            content()
         }
         // Limit dynamic type to prevent picker from exceeding bounds
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)

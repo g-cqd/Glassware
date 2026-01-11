@@ -67,11 +67,11 @@ public enum MenuPickerDisplayMode: Sendable, Equatable {
 public struct GlassMenuPicker<Value: Hashable, Label: View, Option: View>: View {
     // MARK: - Properties
 
-    @Binding var selection: Value
-    let options: [Value]
-    let displayMode: MenuPickerDisplayMode
-    let label: (Value) -> Label
-    let optionLabel: (Value) -> Option
+    @Binding private var selection: Value
+    private let options: [Value]
+    private let displayMode: MenuPickerDisplayMode
+    private let label: (Value) -> Label
+    private let optionLabel: (Value) -> Option
 
     @Environment(\.glassDensity) private var density
     @Environment(\.glassEdge) private var toolbarEdge
@@ -164,6 +164,7 @@ public struct GlassMenuPicker<Value: Hashable, Label: View, Option: View>: View 
             .padding(.horizontal, pickerHorizontalPadding)
         }
         .buttonStyle(.glass(intent: .action, style: buttonStyle))
+        .glassEffectTransition(.materialize)
     }
 
     // MARK: - Private Views
@@ -260,12 +261,15 @@ private enum MenuPickerOption: String, CaseIterable, Hashable, CustomStringConve
             VStack {
                 Spacer()
                 GlassMenuPicker(selection: $selection, options: MenuPickerOption.allCases)
+                    .background(.blue)
                     .padding()
 
                 Text("Selected: \(selection.description)")
                     .font(.caption)
                 Spacer()
             }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .background(.red.gradient)
         }
     }
     return Preview()
