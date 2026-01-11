@@ -14,7 +14,7 @@ import SwiftUI
 /// Features:
 /// - Sliding capsule indicator that animates between selections
 /// - Draggable capsule for gesture-based selection with spring animation
-/// - Visual selection feedback during drag (items highlight as thumb passes over)
+/// - Two-layer visual design: secondary content below, primary content masked by thumb
 /// - Drag constrained to picker bounds
 /// - Invisible hit areas below each item for tap selection
 /// - Supports iconOnly, titleOnly, and titleAndIcon styles
@@ -40,8 +40,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
     let axis: SegmentedPickerAxis
     @ViewBuilder let content: () -> Content
 
-    @State private var itemFrames: [Value: CGRect] = [:]
-    @State private var cachedSortedValues: [Value] = []
+    @State private var childSizes: [Int: CGSize] = [:]
     @State private var dragOffset: CGFloat = 0
     @State private var isDragging = false
 
@@ -68,15 +67,11 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
     }
 
     /// Effective axis, accounting for vertical toolbar edge placement.
-    ///
-    /// When on a vertical edge (leading/trailing), automatically uses vertical axis.
     private var effectiveAxis: SegmentedPickerAxis {
         toolbarEdge.isVertical ? .vertical : axis
     }
 
     /// Effective style, accounting for vertical toolbar edge placement.
-    ///
-    /// When on a vertical edge, defaults to iconOnly for compactness.
     private var effectiveStyle: SegmentedPickerStyle {
         if toolbarEdge.isVertical {
             .iconOnly
@@ -85,22 +80,112 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
         }
     }
 
-    /// The frame of the currently selected item.
-    private var selectedFrame: CGRect? {
-        itemFrames[selection]
+    public var body: some View {
+        _VariadicView.Tree(SegmentedPickerRoot(
+            selection: $selection,
+            style: effectiveStyle,
+            axis: effectiveAxis,
+            childSizes: $childSizes,
+            dragOffset: $dragOffset,
+            isDragging: $isDragging,
+            reduceMotion: reduceMotion,
+            metrics: metrics
+        )) {
+            content()
+        }
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+    }
+}
+
+// MARK: - Variadic View Root
+
+private struct SegmentedPickerRoot<Value: Hashable>: _VariadicView.UnaryViewRoot {
+    @Binding var selection: Value
+    let style: SegmentedPickerStyle
+    let axis: SegmentedPickerAxis
+    @Binding var childSizes: [Int: CGSize]
+    @Binding var dragOffset: CGFloat
+    @Binding var isDragging: Bool
+    let reduceMotion: Bool
+    let metrics: GlassMetrics
+
+    @MainActor
+    func body(children: _VariadicView.Children) -> some View {
+        SegmentedPickerLayout(
+            selection: $selection,
+            style: style,
+            axis: axis,
+            childSizes: $childSizes,
+            dragOffset: $dragOffset,
+            isDragging: $isDragging,
+            reduceMotion: reduceMotion,
+            metrics: metrics,
+            children: children
+        )
+    }
+}
+
+// MARK: - Layout View
+
+private struct SegmentedPickerLayout<Value: Hashable>: View {
+    @Binding var selection: Value
+    let style: SegmentedPickerStyle
+    let axis: SegmentedPickerAxis
+    @Binding var childSizes: [Int: CGSize]
+    @Binding var dragOffset: CGFloat
+    @Binding var isDragging: Bool
+    let reduceMotion: Bool
+    let metrics: GlassMetrics
+    let children: _VariadicView.Children
+
+    private var layout: AnyLayout {
+        switch axis {
+        case .horizontal:
+            AnyLayout(HStackLayout(spacing: 0))
+        case .vertical:
+            AnyLayout(VStackLayout(spacing: 0))
+        }
     }
 
-    /// Calculates bounds for drag offset based on item positions.
-    private var dragBounds: ClosedRange<CGFloat> {
-        guard let selectedFrame,
-              let firstValue = cachedSortedValues.first,
-              let lastValue = cachedSortedValues.last,
-              let firstFrame = itemFrames[firstValue],
-              let lastFrame = itemFrames[lastValue] else {
-            return 0...0
+    /// Computes the frame for a child at the given index based on accumulated sizes.
+    private func frameForChild(at index: Int) -> CGRect {
+        var origin: CGFloat = 0
+        for i in 0..<index {
+            if let size = childSizes[i] {
+                origin += axis == .horizontal ? size.width : size.height
+            }
         }
+        let size = childSizes[index] ?? .zero
+        if axis == .horizontal {
+            return CGRect(x: origin, y: 0, width: size.width, height: size.height)
+        } else {
+            return CGRect(x: 0, y: origin, width: size.width, height: size.height)
+        }
+    }
 
-        if effectiveAxis == .horizontal {
+    /// Index of the selected child, derived from trait values.
+    private var selectedIndex: Int? {
+        for (index, child) in children.enumerated() {
+            if let value = child[SegmentedPickerValueTrait<Value>.self], value == selection {
+                return index
+            }
+        }
+        return nil
+    }
+
+    /// Frame of the currently selected item.
+    private var selectedFrame: CGRect? {
+        guard let index = selectedIndex else { return nil }
+        return frameForChild(at: index)
+    }
+
+    /// Drag bounds based on item positions.
+    private var dragBounds: ClosedRange<CGFloat> {
+        guard let selectedFrame, !children.isEmpty else { return 0...0 }
+        let firstFrame = frameForChild(at: 0)
+        let lastFrame = frameForChild(at: children.count - 1)
+
+        if axis == .horizontal {
             let minOffset = firstFrame.minX - selectedFrame.minX
             let maxOffset = lastFrame.minX - selectedFrame.minX
             return minOffset...maxOffset
@@ -111,71 +196,94 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
         }
     }
 
-    /// The value currently under the thumb during drag.
-    private var visualSelection: Value? {
-        guard isDragging, let selectedFrame else { return nil }
+    /// Whether the style uses a circle shape.
+    private var usesCircleShape: Bool {
+        style == .iconOnly
+    }
 
-        let thumbPosition: CGFloat
-        if effectiveAxis == .horizontal {
-            thumbPosition = selectedFrame.midX + dragOffset
+    /// Offset for the thumb position.
+    private var thumbOffset: CGSize {
+        guard let frame = selectedFrame else { return .zero }
+        let clampedOffset = dragOffset.clamped(to: dragBounds)
+        if axis == .horizontal {
+            return CGSize(width: frame.minX + clampedOffset, height: frame.minY)
         } else {
-            thumbPosition = selectedFrame.midY + dragOffset
+            return CGSize(width: frame.minX, height: frame.minY + clampedOffset)
         }
+    }
 
-        // Find item whose center is closest to thumb center
-        var closestValue: Value?
-        var closestDistance: CGFloat = .infinity
+    /// Size of the thumb.
+    private var thumbSize: CGSize {
+        selectedFrame?.size ?? .zero
+    }
 
-        for (value, frame) in itemFrames {
-            let itemCenter = effectiveAxis == .horizontal ? frame.midX : frame.midY
-            let distance = abs(itemCenter - thumbPosition)
-            if distance < closestDistance {
-                closestDistance = distance
-                closestValue = value
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            // Layer 1: Secondary styled content (always visible)
+            layout {
+                ForEach(Array(children.enumerated()), id: \.element.id) { index, child in
+                    child
+                        .foregroundStyle(.secondary)
+                        .background {
+                            GeometryReader { geo in
+                                Color.clear
+                                    .onAppear { childSizes[index] = geo.size }
+                                    .onChange(of: geo.size) { _, newSize in childSizes[index] = newSize }
+                            }
+                        }
+                }
             }
-        }
+            .allowsHitTesting(false)
 
-        return closestValue
-    }
-    
-    private var layout: some Layout {
-        switch effectiveAxis {
-            case .horizontal:
-                AnyLayout(HStackLayout(spacing: 0))
-            case .vertical:
-                AnyLayout(VStackLayout(spacing: 0))
-        }
-    }
-
-    public var body: some View {
-        layout {
-            content()
-        }
-        // Limit dynamic type to prevent picker from exceeding bounds
-        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        // Pass visual selection to items via environment
-        .environment(\.pickerVisualSelection, visualSelection.map { VisualSelectionState($0) })
-        .coordinateSpace(name: "picker")
-        .onPreferenceChange(SegmentedPickerItemFramePreference<Value>.self) { frames in
-            itemFrames = frames
-            // Cache sorted values based on effective axis
-            if effectiveAxis == .horizontal {
-                cachedSortedValues = frames.sorted { $0.value.minX < $1.value.minX }.map(\.key)
+            // Layer 2: Thumb
+            if usesCircleShape {
+                SelectionThumb(shape: Circle())
+                    .frame(width: thumbSize.width, height: thumbSize.height)
+                    .offset(thumbOffset)
             } else {
-                cachedSortedValues = frames.sorted { $0.value.minY < $1.value.minY }.map(\.key)
+                SelectionThumb(shape: Capsule())
+                    .frame(width: thumbSize.width, height: thumbSize.height)
+                    .offset(thumbOffset)
             }
-        }
-        .background(alignment: .topLeading) {
-            // Selection capsule - positioned via offset
-            if let frame = selectedFrame {
-                selectionCapsule(for: frame)
+
+            // Layer 3: Primary styled content, masked by thumb shape
+            layout {
+                ForEach(Array(children.enumerated()), id: \.element.id) { _, child in
+                    child
+                        .foregroundStyle(.primary)
+                }
             }
-        }
-        .background(alignment: .topLeading) {
-            // Invisible hit areas for tap selection
+            .allowsHitTesting(false)
+            .mask(alignment: .topLeading) {
+                Group {
+                    if usesCircleShape {
+                        Circle()
+                    } else {
+                        Capsule()
+                    }
+                }
+                .frame(width: thumbSize.width, height: thumbSize.height)
+                .offset(thumbOffset)
+            }
+
+            // Layer 4: Invisible hit areas for tap selection
             hitAreas
+
+            // Layer 5: Invisible drag handle on top
+            Color.clear
+                .frame(width: thumbSize.width, height: thumbSize.height)
+                .contentShape(.rect)
+                .offset(thumbOffset)
+                .gesture(dragGesture)
         }
-        // VoiceOver: Allow swipe up/down to change selection
+        .animation(
+            reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
+            value: selectedIndex
+        )
+        .animation(
+            reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
+            value: dragOffset
+        )
         .accessibilityElement(children: .combine)
         .accessibilityAdjustableAction { direction in
             adjustSelection(direction: direction)
@@ -186,59 +294,34 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
     // MARK: - Accessibility
 
     private var accessibilityValueText: Text {
-        if let index = cachedSortedValues.firstIndex(of: selection) {
-            Text("\(index + 1) of \(cachedSortedValues.count)")
+        if let index = selectedIndex {
+            Text("\(index + 1) of \(children.count)")
         } else {
             Text("")
         }
     }
 
     private func adjustSelection(direction: AccessibilityAdjustmentDirection) {
-        guard let currentIndex = cachedSortedValues.firstIndex(of: selection) else { return }
+        guard let currentIndex = selectedIndex else { return }
 
         switch direction {
         case .increment:
             let nextIndex = currentIndex + 1
-            if nextIndex < cachedSortedValues.count {
-                selection = cachedSortedValues[nextIndex]
+            if nextIndex < children.count {
+                if let value = children[nextIndex][SegmentedPickerValueTrait<Value>.self] {
+                    selection = value
+                }
             }
         case .decrement:
             let prevIndex = currentIndex - 1
             if prevIndex >= 0 {
-                selection = cachedSortedValues[prevIndex]
+                if let value = children[prevIndex][SegmentedPickerValueTrait<Value>.self] {
+                    selection = value
+                }
             }
         @unknown default:
             break
         }
-    }
-
-    // MARK: - Selection Capsule
-
-    @ViewBuilder
-    private func selectionCapsule(for frame: CGRect) -> some View {
-        let clampedOffset = dragOffset.clamped(to: dragBounds)
-
-        Group {
-            if effectiveStyle == .iconOnly {
-                SelectionThumb(shape: Circle())
-            } else {
-                SelectionThumb(shape: Capsule())
-            }
-        }
-        .frame(width: frame.width, height: frame.height)
-        .offset(
-            x: effectiveAxis == .horizontal ? frame.minX + clampedOffset : frame.minX,
-            y: effectiveAxis == .vertical ? frame.minY + clampedOffset : frame.minY
-        )
-        .gesture(dragGesture)
-        .animation(
-            reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
-            value: selection
-        )
-        .animation(
-            reduceMotion ? nil : (isDragging ? nil : .spring(response: 0.35, dampingFraction: 0.7)),
-            value: dragOffset
-        )
     }
 
     // MARK: - Drag Gesture
@@ -247,7 +330,7 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
         DragGesture()
             .onChanged { value in
                 isDragging = true
-                let translation = effectiveAxis == .horizontal ? value.translation.width : value.translation.height
+                let translation = axis == .horizontal ? value.translation.width : value.translation.height
                 dragOffset = translation.clamped(to: dragBounds)
             }
             .onEnded { value in
@@ -257,55 +340,60 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
                     return
                 }
 
-                // Calculate where the capsule ended up
-                let translation = effectiveAxis == .horizontal ? value.translation.width : value.translation.height
+                let translation = axis == .horizontal ? value.translation.width : value.translation.height
                 let clampedTranslation = translation.clamped(to: dragBounds)
                 let endPosition: CGFloat
-                if effectiveAxis == .horizontal {
+                if axis == .horizontal {
                     endPosition = currentFrame.midX + clampedTranslation
                 } else {
                     endPosition = currentFrame.midY + clampedTranslation
                 }
 
                 // Find the closest item by center position
-                var closestValue: Value?
+                var closestIndex: Int?
                 var closestDistance: CGFloat = .infinity
 
-                for (itemValue, itemFrame) in itemFrames {
-                    let itemCenter = effectiveAxis == .horizontal ? itemFrame.midX : itemFrame.midY
+                for i in 0..<children.count {
+                    let frame = frameForChild(at: i)
+                    let itemCenter = axis == .horizontal ? frame.midX : frame.midY
                     let distance = abs(itemCenter - endPosition)
                     if distance < closestDistance {
                         closestDistance = distance
-                        closestValue = itemValue
+                        closestIndex = i
                     }
                 }
 
-                // Reset drag state before updating selection
-                // This allows the spring animation to trigger
                 isDragging = false
                 dragOffset = 0
 
-                if let newValue = closestValue {
-                    selection = newValue
+                if let index = closestIndex,
+                   let value = children[index][SegmentedPickerValueTrait<Value>.self] {
+                    selection = value
                 }
             }
     }
 
-    // MARK: - Invisible Hit Areas
+    // MARK: - Hit Areas
 
     @ViewBuilder
     private var hitAreas: some View {
-        // Use cachedSortedValues for stable iteration order
-        ForEach(cachedSortedValues, id: \.self) { value in
-            if let frame = itemFrames[value] {
-                Color.clear
-                    .frame(width: frame.width, height: frame.height)
-                    .contentShape(.rect)
-                    .offset(x: frame.minX, y: frame.minY)
-                    .onTapGesture {
+        ForEach(0..<children.count, id: \.self) { index in
+            let frame = frameForChild(at: index)
+            Color.clear
+                .frame(width: frame.width, height: frame.height)
+                .contentShape(.rect)
+                .offset(x: frame.minX, y: frame.minY)
+                .onTapGesture {
+                    if let value = children[index][SegmentedPickerValueTrait<Value>.self] {
                         selection = value
                     }
-            }
+                }
         }
     }
+}
+
+// MARK: - View Trait for Value
+
+struct SegmentedPickerValueTrait<Value: Hashable>: _ViewTraitKey {
+    static var defaultValue: Value? { nil }
 }
