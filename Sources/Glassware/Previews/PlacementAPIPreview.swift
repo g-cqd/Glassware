@@ -19,7 +19,7 @@ import SwiftUI
                 .glass {
                     GlassItem(placement: .bottomLeading) {
                         Button("Settings", systemImage: "gearshape") { }
-                            .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                            .buttonStyle(.glass(style: .iconOnly()))
                     }
 
                     GlassItemGroup(placement: .bottomPrimary) {
@@ -29,13 +29,13 @@ import SwiftUI
                             } label: {
                                 Label(tab.title, systemImage: tab.systemImage)
                             }
-                            .buttonStyle(.glass(isSelected: selectedTab == tab))
+                            .buttonStyle(.glass())
                         }
                     }
 
                     GlassItem(placement: .bottomTrailing) {
                         Button("Add", systemImage: "plus") { }
-                            .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                            .buttonStyle(.glass(style: .iconOnly()))
                     }
                 }
         }
@@ -59,13 +59,13 @@ import SwiftUI
                         Button("Filter", systemImage: showFilter ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle") {
                             showFilter.toggle()
                         }
-                        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                        .buttonStyle(.glass(style: .iconOnly()))
                     }
 
                     // Bottom toolbar
                     GlassItem(placement: .bottomLeading) {
                         Button("Menu", systemImage: "line.3.horizontal") { }
-                            .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                            .buttonStyle(.glass(style: .iconOnly()))
                     }
 
                     GlassItemGroup(placement: .bottomPrimary) {
@@ -75,7 +75,7 @@ import SwiftUI
                             } label: {
                                 Label(tab.title, systemImage: tab.systemImage)
                             }
-                            .buttonStyle(.glass(isSelected: selectedTab == tab))
+                            .buttonStyle(.glass())
                         }
                     }
                 }
@@ -115,7 +115,7 @@ import SwiftUI
                             } label: {
                                 Label(tab.title, systemImage: tab.systemImage)
                             }
-                            .buttonStyle(.glass(isSelected: selectedTab == tab))
+                            .buttonStyle(.glass())
                         }
                     }
                 }
@@ -154,7 +154,7 @@ import SwiftUI
                             } label: {
                                 Label(tab.title, systemImage: tab.systemImage)
                             }
-                            .buttonStyle(.glass(isSelected: selectedTab == tab))
+                            .buttonStyle(.glass())
                         }
                     }
                 }
@@ -176,7 +176,7 @@ import SwiftUI
                     // Compact settings button
                     GlassItem(placement: .bottomLeading) {
                         Button("Settings", systemImage: "gearshape") { }
-                            .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                            .buttonStyle(.glass(style: .iconOnly()))
                     }
                     .glassDensity(.compact)
 
@@ -188,14 +188,14 @@ import SwiftUI
                             } label: {
                                 Label(tab.title, systemImage: tab.systemImage)
                             }
-                            .buttonStyle(.glass(isSelected: selectedTab == tab))
+                            .buttonStyle(.glass())
                         }
                     }
 
                     // Dense action button
                     GlassItem(placement: .bottomTrailing) {
                         Button("Add", systemImage: "plus") { }
-                            .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                            .buttonStyle(.glass(style: .iconOnly()))
                     }
                     .glassDensity(.dense)
                 }
@@ -224,7 +224,7 @@ import SwiftUI
                     Button(isEditing ? "Cancel" : "Edit", systemImage: isEditing ? "xmark" : "pencil") {
                         isEditing.toggle()
                     }
-                    .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                    .buttonStyle(.glass(style: .iconOnly()))
                 }
 
                 if !isEditing {
@@ -235,7 +235,7 @@ import SwiftUI
                             } label: {
                                 Label(tab.title, systemImage: tab.systemImage)
                             }
-                            .buttonStyle(.glass(isSelected: selectedTab == tab))
+                            .buttonStyle(.glass())
                         }
                     }
                 }
@@ -245,7 +245,7 @@ import SwiftUI
                         Button("Done", systemImage: "checkmark") {
                             isEditing = false
                         }
-                        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                        .buttonStyle(.glass(style: .iconOnly()))
                     }
                 }
             }

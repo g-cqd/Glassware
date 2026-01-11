@@ -31,18 +31,14 @@ private struct EdgePreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(
-                            .glass(
-                                isSelected: selectedTab == tab
-                            )
-                        )
+                        .buttonStyle(.glass())
                     }
                 },
                 trailing: {
                     Button {} label: {
                         Label("Add", systemImage: "plus")
                     }
-                    .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                    .buttonStyle(.glass(style: .iconOnly()))
                 }
             )
             .overlay(alignment: .center) {
@@ -108,7 +104,7 @@ private struct AllEdgesComparisonView: View {
                     Button {} label: {
                         Label(tab.title, systemImage: tab.systemImage)
                     }
-                    .buttonStyle(.glass(isSelected: tab == .home))
+                    .buttonStyle(.glass())
                 }
 
                 Spacer()
@@ -116,7 +112,7 @@ private struct AllEdgesComparisonView: View {
                 Button {} label: {
                     Label("Add", systemImage: "plus")
                 }
-                .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                .buttonStyle(.glass(style: .iconOnly()))
             }
             .padding(3)
 
@@ -142,7 +138,7 @@ private struct AllEdgesComparisonView: View {
                     Button {} label: {
                         Label(tab.title, systemImage: tab.systemImage)
                     }
-                    .buttonStyle(.glass(style: .iconOnly(), isSelected: tab == .home))
+                    .buttonStyle(.glass(style: .iconOnly()))
                 }
 
                 Spacer()
@@ -150,7 +146,7 @@ private struct AllEdgesComparisonView: View {
                 Button {} label: {
                     Label("Add", systemImage: "plus")
                 }
-                .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                .buttonStyle(.glass(style: .iconOnly()))
             }
             .padding(3)
             .frame(height: 200)

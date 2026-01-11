@@ -163,7 +163,7 @@ public struct GlassMenuPicker<Value: Hashable, Label: View, Option: View>: View 
             }
             .padding(.horizontal, pickerHorizontalPadding)
         }
-        .buttonStyle(.glass(intent: .action, style: buttonStyle))
+        .buttonStyle(.glass(style: buttonStyle))
         .glassEffectTransition(.materialize)
     }
 
@@ -323,7 +323,7 @@ private enum MenuPickerOption: String, CaseIterable, Hashable, CustomStringConve
                             } label: {
                                 Label("Tab \(index)", systemImage: "circle")
                             }
-                            .buttonStyle(.glass(isSelected: selectedTab == index))
+                            .buttonStyle(.glass())
                         }
                     }
                 )
@@ -443,7 +443,7 @@ private enum MenuPickerOption: String, CaseIterable, Hashable, CustomStringConve
                             } label: {
                                 Label("Tab \(index)", systemImage: "circle")
                             }
-                            .buttonStyle(.glass(isSelected: selectedTab == index))
+                            .buttonStyle(.glass())
                         }
                     }
                 )

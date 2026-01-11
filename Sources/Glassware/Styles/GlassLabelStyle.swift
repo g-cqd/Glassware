@@ -7,19 +7,16 @@
 
 import SwiftUI
 
-// MARK: - Primary Toolbar Label Style
+// MARK: - Glass Label Style
 
-/// Custom label style for vertical icon + text layout with selection-aware text rendering.
+/// Custom label style for vertical icon + text layout.
 ///
 /// Renders the icon above the title text, centered vertically.
-/// When selected, applies subtle contrast enhancement for readability.
+/// Used by glass button styles for titleAndIcon visual layout.
 public struct GlassLabelStyle: LabelStyle {
     @Environment(\.glassDensity) private var density
-    let isSelected: Bool
 
-    public init(isSelected: Bool = false) {
-        self.isSelected = isSelected
-    }
+    public init() {}
 
     /// Spacing between icon and text, based on density.
     private var spacing: CGFloat {
@@ -39,12 +36,6 @@ public struct GlassLabelStyle: LabelStyle {
                 .font(.caption2.weight(.medium))
                 .minimumScaleFactor(GlassTokens.Typography.minimumScaleFactor)
                 .lineLimit(1)
-                // Smart blending: when selected, add subtle shadow for contrast
-                .shadow(
-                    color: isSelected ? .black.opacity(GlassTokens.Shadow.textOpacity) : .clear,
-                    radius: isSelected ? GlassTokens.Shadow.textRadius : 0,
-                    y: isSelected ? GlassTokens.Shadow.textOffsetY : 0
-                )
         }
         .contentShape(.rect)
     }
@@ -54,22 +45,18 @@ public struct GlassLabelStyle: LabelStyle {
     /// Helper view for rendering a custom icon with a title from the button's label.
     ///
     /// Used when the visual style specifies a custom image that overrides the label's icon.
-    /// This is a consolidated implementation that replaces the previous CustomIconLabel.
     public struct IconLabel<Title: View>: View {
         let icon: Image
         @ViewBuilder let title: () -> Title
-        let isSelected: Bool
         let density: GlassDensity
 
         public init(
             icon: Image,
             @ViewBuilder title: @escaping () -> Title,
-            isSelected: Bool,
             density: GlassDensity
         ) {
             self.icon = icon
             self.title = title
-            self.isSelected = isSelected
             self.density = density
         }
 
@@ -90,12 +77,6 @@ public struct GlassLabelStyle: LabelStyle {
                     .font(.caption2.weight(.medium))
                     .minimumScaleFactor(GlassTokens.Typography.minimumScaleFactor)
                     .lineLimit(1)
-                    // Smart blending: when selected, add subtle shadow for contrast
-                    .shadow(
-                        color: isSelected ? .black.opacity(GlassTokens.Shadow.textOpacity) : .clear,
-                        radius: isSelected ? GlassTokens.Shadow.textRadius : 0,
-                        y: isSelected ? GlassTokens.Shadow.textOffsetY : 0
-                    )
             }
             .contentShape(.rect)
         }

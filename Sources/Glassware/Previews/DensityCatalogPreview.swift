@@ -41,7 +41,7 @@ private struct DensityPreviewRow: View {
                     } label: {
                         Label(tab.title, systemImage: tab.systemImage)
                     }
-                    .buttonStyle(.glass(isSelected: selectedTab == tab))
+                    .buttonStyle(.glass())
                 }
             }
             .padding(metrics.containerPadding)
@@ -86,14 +86,14 @@ private struct FullGlassDensityPreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 },
                 trailing: {
                     Button {} label: {
                         Label("Add", systemImage: "plus")
                     }
-                    .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                    .buttonStyle(.glass(style: .iconOnly()))
                 }
             )
             .glassDensity(density)

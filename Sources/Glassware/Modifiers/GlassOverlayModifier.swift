@@ -388,7 +388,7 @@ private struct EdgeGlassContainer: View {
             } label: {
                 Image(systemName: collapseConfig.mergeIcon)
             }
-            .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+            .buttonStyle(.glass(style: .iconOnly()))
             .matchedGeometryEffect(
                 id: primaryContainerTransitionID,
                 in: collapseNamespace,

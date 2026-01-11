@@ -24,7 +24,7 @@ private struct SpacerGroupingPreview: View {
             } label: {
               Label(tab.title, systemImage: tab.systemImage)
             }
-            .buttonStyle(.glass(isSelected: selectedTab == tab))
+            .buttonStyle(.glass())
           }
 
           // Spacer creates visual separation
@@ -36,7 +36,7 @@ private struct SpacerGroupingPreview: View {
           } label: {
             Label(PreviewTab.profile.title, systemImage: PreviewTab.profile.systemImage)
           }
-          .buttonStyle(.glass(isSelected: selectedTab == .profile))
+          .buttonStyle(.glass())
         }
       )
       .overlay(alignment: .top) {
@@ -61,12 +61,12 @@ private struct MultipleSpacersPreview: View {
           Button {} label: {
             Label("Undo", systemImage: "arrow.uturn.backward")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
 
           Button {} label: {
             Label("Redo", systemImage: "arrow.uturn.forward")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
 
           Spacer()
 
@@ -74,17 +74,17 @@ private struct MultipleSpacersPreview: View {
           Button {} label: {
             Label("Cut", systemImage: "scissors")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
 
           Button {} label: {
             Label("Copy", systemImage: "doc.on.doc")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
 
           Button {} label: {
             Label("Paste", systemImage: "doc.on.clipboard")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
 
           Spacer()
 
@@ -92,7 +92,7 @@ private struct MultipleSpacersPreview: View {
           Button {} label: {
             Label("Share", systemImage: "square.and.arrow.up")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
       )
       .overlay(alignment: .top) {
@@ -128,7 +128,7 @@ private struct LeadingTrailingSpacerPreview: View {
             } label: {
               Label(tab.title, systemImage: tab.systemImage)
             }
-            .buttonStyle(.glass(isSelected: selectedTab == tab))
+            .buttonStyle(.glass())
           }
 
           Spacer()
@@ -137,13 +137,13 @@ private struct LeadingTrailingSpacerPreview: View {
           Button {} label: {
             Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         },
         trailing: {
           Button {} label: {
             Label("Add", systemImage: "plus")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
       )
   }
@@ -179,7 +179,7 @@ private struct ConditionalContentPreview: View {
           } label: {
             Label(tab.title, systemImage: tab.systemImage)
           }
-          .buttonStyle(.glass(isSelected: selectedTab == tab))
+          .buttonStyle(.glass())
         }
       },
       trailing: {
@@ -187,7 +187,7 @@ private struct ConditionalContentPreview: View {
           Button {} label: {
             Label("Add", systemImage: "plus")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
       }
     )
@@ -215,7 +215,7 @@ private struct ForEachBuilderPreview: View {
             Button {} label: {
               Label(action.0, systemImage: action.1)
             }
-            .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+            .buttonStyle(.glass(style: .iconOnly()))
           }
         }
       )
@@ -256,14 +256,14 @@ private struct LayoutDistributionPreview: View {
           } label: {
             Label(tab.title, systemImage: tab.systemImage)
           }
-          .buttonStyle(.glass(isSelected: selectedTab == tab))
+          .buttonStyle(.glass())
         }
       },
       trailing: {
         Button {} label: {
           Label("Add", systemImage: "plus")
         }
-        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+        .buttonStyle(.glass(style: .iconOnly()))
       }
     )
     .glassLayout(distribution)
@@ -313,7 +313,7 @@ private struct DistributionComparisonPreview: View {
             Button {} label: {
               Label(tab.title, systemImage: tab.systemImage)
             }
-            .buttonStyle(.glass(isSelected: tab == .home))
+            .buttonStyle(.glass())
           }
         }
         .padding(3)
@@ -329,7 +329,7 @@ private struct DistributionComparisonPreview: View {
         Button {} label: {
           Label("Add", systemImage: "plus")
         }
-        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+        .buttonStyle(.glass(style: .iconOnly()))
 
       }
       .frame(maxWidth: .infinity)
@@ -386,7 +386,7 @@ private struct DistributionComparisonPreview: View {
               } label: {
                 Label(tab.title, systemImage: tab.systemImage)
               }
-              .buttonStyle(.glass(isSelected: selectedTab == tab))
+              .buttonStyle(.glass())
             }
           }
         )
@@ -421,12 +421,12 @@ private struct DistributionComparisonPreview: View {
         Button {} label: {
           Label("Share", systemImage: "square.and.arrow.up")
         }
-        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+        .buttonStyle(.glass(style: .iconOnly()))
 
         Button {} label: {
           Label("Add", systemImage: "plus")
         }
-        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+        .buttonStyle(.glass(style: .iconOnly()))
       }
     )
 }

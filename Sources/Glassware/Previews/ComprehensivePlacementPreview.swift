@@ -19,7 +19,7 @@ private struct AllPositionsOnEdgePreview: View {
             .glass {
                 GlassItem(placement: leadingPlacement) {
                     Button("Leading", systemImage: "arrow.left") {}
-                        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                        .buttonStyle(.glass(style: .iconOnly()))
                 }
 
                 GlassItemGroup(placement: primaryPlacement) {
@@ -30,15 +30,14 @@ private struct AllPositionsOnEdgePreview: View {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
                         .buttonStyle(.glass(
-                            style: edge.isVertical ? .iconOnly() : .titleAndIcon(),
-                            isSelected: selectedTab == tab
+                            style: edge.isVertical ? .iconOnly() : .titleAndIcon()
                         ))
                     }
                 }
 
                 GlassItem(placement: trailingPlacement) {
                     Button("Trailing", systemImage: "arrow.right") {}
-                        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                        .buttonStyle(.glass(style: .iconOnly()))
                 }
             }
     }
@@ -105,20 +104,20 @@ private struct MultiEdgeOverlayPreview: View {
                     Button("Filter", systemImage: filterActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle") {
                         filterActive.toggle()
                     }
-                    .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                    .buttonStyle(.glass(style: .iconOnly()))
                 }
 
                 GlassItem(placement: .topTrailing) {
                     Button("Sort", systemImage: sortAscending ? "arrow.up" : "arrow.down") {
                         sortAscending.toggle()
                     }
-                    .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                    .buttonStyle(.glass(style: .iconOnly()))
                 }
 
                 // Bottom edge: main navigation
                 GlassItem(placement: .bottomLeading) {
                     Button("Menu", systemImage: "line.3.horizontal") {}
-                        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                        .buttonStyle(.glass(style: .iconOnly()))
                 }
 
                 GlassItemGroup(placement: .bottomPrimary) {
@@ -128,13 +127,13 @@ private struct MultiEdgeOverlayPreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 }
 
                 GlassItem(placement: .bottomTrailing) {
                     Button("Add", systemImage: "plus") {}
-                        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                        .buttonStyle(.glass(style: .iconOnly()))
                 }
             }
     }
@@ -162,7 +161,7 @@ private struct AccessoryOffsetComparisonPreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 }
             }
@@ -218,7 +217,7 @@ private struct AllAccessoriesPreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 }
             }
@@ -274,7 +273,7 @@ private struct SemanticAccessoryHelpersPreview: View {
                             } label: {
                                 Label(tab.title, systemImage: tab.systemImage)
                             }
-                            .buttonStyle(.glass(isSelected: selectedTab == tab))
+                            .buttonStyle(.glass())
                         }
                     }
                 }
@@ -308,7 +307,7 @@ private struct FourEdgeLayoutPreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 }
 
@@ -318,12 +317,12 @@ private struct FourEdgeLayoutPreview: View {
                         Button {} label: {
                             Image(systemName: "sidebar.left")
                         }
-                        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                        .buttonStyle(.glass(style: .iconOnly()))
 
                         Button {} label: {
                             Image(systemName: "folder")
                         }
-                        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                        .buttonStyle(.glass(style: .iconOnly()))
                     }
                     .padding(8)
 
@@ -335,12 +334,12 @@ private struct FourEdgeLayoutPreview: View {
                         Button {} label: {
                             Image(systemName: "info.circle")
                         }
-                        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                        .buttonStyle(.glass(style: .iconOnly()))
 
                         Button {} label: {
                             Image(systemName: "ellipsis")
                         }
-                        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                        .buttonStyle(.glass(style: .iconOnly()))
                     }
                     .padding(8)
 
@@ -375,7 +374,7 @@ private struct BuilderPatternDemoPreview: View {
                             Button("Edit", systemImage: "pencil") {
                                 isEditing = true
                             }
-                            .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                            .buttonStyle(.glass(style: .iconOnly()))
                         }
                     }
 
@@ -387,7 +386,7 @@ private struct BuilderPatternDemoPreview: View {
                             } label: {
                                 Label(tab.title, systemImage: tab.systemImage)
                             }
-                            .buttonStyle(.glass(isSelected: selectedTab == tab))
+                            .buttonStyle(.glass())
                         }
                     }
 
@@ -397,7 +396,7 @@ private struct BuilderPatternDemoPreview: View {
                             Button("Done", systemImage: "checkmark") {
                                 isEditing = false
                             }
-                            .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                            .buttonStyle(.glass(style: .iconOnly()))
                         }
                     }
 
@@ -409,7 +408,7 @@ private struct BuilderPatternDemoPreview: View {
                                     Button {} label: {
                                         Image(systemName: icon)
                                     }
-                                    .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                                    .buttonStyle(.glass(style: .iconOnly()))
                                 }
                             }
                             .padding(6)

@@ -157,7 +157,7 @@ struct InteractiveTabToolbar: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(style: style, isSelected: selectedTab == tab))
+                        .buttonStyle(.glass(style: style))
                     }
                 }
             )
@@ -168,13 +168,13 @@ struct InteractiveTabToolbar: View {
 
 // MARK: - Button Style Grid
 
-/// Grid showing button in different states.
+/// Grid showing button styles in different configurations.
 struct ButtonStyleGrid: View {
-    let intent: GlassIntent
+    let prominent: Bool
     let density: GlassDensity
 
-    init(intent: GlassIntent = .tab, density: GlassDensity = .regular) {
-        self.intent = intent
+    init(prominent: Bool = false, density: GlassDensity = .regular) {
+        self.prominent = prominent
         self.density = density
     }
 
@@ -183,24 +183,34 @@ struct ButtonStyleGrid: View {
             // Title and Icon
             PreviewSection(title: "Title and Icon") {
                 HStack(spacing: 12) {
-                    buttonSample(style: .titleAndIcon(), isSelected: false)
-                    buttonSample(style: .titleAndIcon(), isSelected: true)
+                    buttonSample(style: .titleAndIcon(), role: nil)
+                    buttonSample(style: .titleAndIcon(), role: .destructive)
                 }
             }
 
             // Title Only
             PreviewSection(title: "Title Only") {
                 HStack(spacing: 12) {
-                    buttonSample(style: .titleOnly, isSelected: false)
-                    buttonSample(style: .titleOnly, isSelected: true)
+                    buttonSample(style: .titleOnly, role: nil)
+                    buttonSample(style: .titleOnly, role: .destructive)
                 }
             }
 
             // Icon Only
             PreviewSection(title: "Icon Only") {
                 HStack(spacing: 12) {
-                    buttonSample(style: .iconOnly(), isSelected: false)
-                    buttonSample(style: .iconOnly(), isSelected: true)
+                    buttonSample(style: .iconOnly(), role: nil)
+                    buttonSample(style: .iconOnly(), role: .destructive)
+                }
+            }
+
+            // Disabled State
+            PreviewSection(title: "Disabled") {
+                HStack(spacing: 12) {
+                    buttonSample(style: .titleAndIcon(), role: nil)
+                        .disabled(true)
+                    buttonSample(style: .iconOnly(), role: nil)
+                        .disabled(true)
                 }
             }
         }
@@ -211,17 +221,29 @@ struct ButtonStyleGrid: View {
     }
 
     @ViewBuilder
-    private func buttonSample(style: GlassVisualStyle, isSelected: Bool) -> some View {
+    private func buttonSample(style: GlassVisualStyle, role: ButtonRole?) -> some View {
         VStack(spacing: 4) {
-            Button {} label: {
+            Button(role: role) {} label: {
                 Label("Home", systemImage: "house")
             }
-            .buttonStyle(.glass(intent: intent, style: style, isSelected: isSelected))
+            .buttonStyle(prominent ? AnyButtonStyle(.glassProminent(style: style)) : AnyButtonStyle(.glass(style: style)))
 
-
-            Text(isSelected ? "Selected" : "Default")
+            Text(role == .destructive ? "Destructive" : "Default")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
+    }
+}
+
+/// Type-erased button style wrapper.
+private struct AnyButtonStyle: ButtonStyle {
+    private let _makeBody: (Configuration) -> AnyView
+
+    init<S: ButtonStyle>(_ style: S) {
+        _makeBody = { AnyView(style.makeBody(configuration: $0)) }
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        _makeBody(configuration)
     }
 }

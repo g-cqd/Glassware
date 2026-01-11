@@ -21,7 +21,7 @@ private struct DynamicTypePreview: View {
                 } label: {
                     Label(tab.title, systemImage: tab.systemImage)
                 }
-                .buttonStyle(.glass(isSelected: selectedTab == tab))
+                .buttonStyle(.glass())
             }
         }
         .padding(3)
@@ -162,7 +162,7 @@ private struct ColorContrastPreview: View {
                 Button {} label: {
                     Label("Action", systemImage: "plus")
                 }
-                .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                .buttonStyle(.glass(style: .iconOnly()))
 
             }
 
@@ -184,7 +184,7 @@ private struct ColorContrastPreview: View {
             Button {} label: {
                 Label("Tab", systemImage: "house")
             }
-            .buttonStyle(.glass(isSelected: isSelected))
+            .buttonStyle(.glass())
 
 
             Text(title)
@@ -342,7 +342,7 @@ private struct ReducedMotionDemoPreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 }
                 .padding(3)

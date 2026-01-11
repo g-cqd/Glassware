@@ -176,7 +176,7 @@ private struct PickerInToolbarPreview: View {
                     Button {} label: {
                         Label("More", systemImage: "ellipsis")
                     }
-                    .buttonStyle(.glass(intent: .action, style: .iconOnly))
+                    .buttonStyle(.glass(style: .iconOnly()))
                 }
             )
     }

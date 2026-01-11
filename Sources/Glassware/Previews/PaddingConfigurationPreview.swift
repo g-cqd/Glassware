@@ -25,7 +25,7 @@ private struct PaddingPreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 }
             )
@@ -186,7 +186,7 @@ private struct CustomPaddingBuilder: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 }
             )

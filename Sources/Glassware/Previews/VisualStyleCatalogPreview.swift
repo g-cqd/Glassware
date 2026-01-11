@@ -11,44 +11,45 @@ import SwiftUI
 
 /// Shows all three visual styles side by side.
 private struct VisualStyleComparisonView: View {
-    let intent: GlassIntent
-    @State private var selected: Int = 0
+    let prominent: Bool
 
     var body: some View {
         VStack(spacing: 24) {
             // Title and Icon
             PreviewSection(title: "Title and Icon") {
-                tabRow(style: .titleAndIcon())
+                buttonRow(style: .titleAndIcon())
             }
 
             // Title Only
             PreviewSection(title: "Title Only") {
-                tabRow(style: .titleOnly)
+                buttonRow(style: .titleOnly)
             }
 
             // Icon Only
             PreviewSection(title: "Icon Only") {
-                tabRow(style: .iconOnly())
+                buttonRow(style: .iconOnly())
             }
         }
         .padding()
     }
 
     @ViewBuilder
-    private func tabRow(style: GlassVisualStyle) -> some View {
-        HStack(spacing: 0) {
-            ForEach(PreviewData.tabs.indices, id: \.self) { index in
-                let tab = PreviewData.tabs[index]
-                Button {
-                    selected = index
-                } label: {
-                    Label(tab.title, systemImage: tab.systemImage)
+    private func buttonRow(style: GlassVisualStyle) -> some View {
+        HStack(spacing: 12) {
+            ForEach(Array(PreviewData.tabs.enumerated()), id: \.offset) { _, tab in
+                if prominent {
+                    Button {} label: {
+                        Label(tab.title, systemImage: tab.systemImage)
+                    }
+                    .buttonStyle(.glassProminent(style: style))
+                } else {
+                    Button {} label: {
+                        Label(tab.title, systemImage: tab.systemImage)
+                    }
+                    .buttonStyle(.glass(style: style))
                 }
-                .buttonStyle(.glass(intent: intent, style: style, isSelected: selected == index))
             }
         }
-        .padding(3)
-
     }
 }
 
@@ -57,7 +58,6 @@ private struct VisualStyleComparisonView: View {
 /// Shows a complete toolbar with a specific visual style.
 private struct FullToolbarStylePreview: View {
     let style: GlassVisualStyle
-    @State private var selectedTab: PreviewTab = .home
 
     var body: some View {
         SampleContentView(styleName, color: .purple.opacity(0.05))
@@ -70,19 +70,17 @@ private struct FullToolbarStylePreview: View {
                 },
                 content: {
                     ForEach(PreviewTab.allCases, id: \.rawValue) { tab in
-                        Button {
-                            selectedTab = tab
-                        } label: {
+                        Button {} label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(style: style, isSelected: selectedTab == tab))
+                        .buttonStyle(.glass(style: style))
                     }
                 },
                 trailing: {
                     Button {} label: {
                         Label("Add", systemImage: "plus")
                     }
-                    .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                    .buttonStyle(.glassProminent(style: .iconOnly()))
                 }
             )
             .overlay(alignment: .topLeading) {
@@ -90,7 +88,6 @@ private struct FullToolbarStylePreview: View {
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-
                     .padding()
             }
     }
@@ -104,45 +101,51 @@ private struct FullToolbarStylePreview: View {
     }
 }
 
-// MARK: - Action Button Styles
+// MARK: - Button States Preview
 
-/// Shows action buttons in different visual styles.
-private struct ActionButtonStylesView: View {
+/// Shows buttons in different states (normal, disabled, destructive).
+private struct ButtonStatesView: View {
     var body: some View {
         VStack(spacing: 24) {
-            PreviewSection(title: "Action - Icon Only") {
+            PreviewSection(title: "Normal") {
                 HStack(spacing: 12) {
-                    ForEach(PreviewData.actions.indices, id: \.self) { index in
-                        let action = PreviewData.actions[index]
-                        Button {} label: {
-                            Label(action.title, systemImage: action.systemImage)
-                        }
-                        .buttonStyle(.glass(intent: .action, style: .iconOnly()))
-                    }
+                    Button {} label: { Label("Share", systemImage: "square.and.arrow.up") }
+                        .buttonStyle(.glass(style: .iconOnly()))
+                    Button {} label: { Label("Edit", systemImage: "pencil") }
+                        .buttonStyle(.glass(style: .iconOnly()))
+                    Button {} label: { Label("Save", systemImage: "checkmark") }
+                        .buttonStyle(.glass(style: .titleOnly))
                 }
             }
 
-            PreviewSection(title: "Action - Title Only") {
+            PreviewSection(title: "Prominent") {
                 HStack(spacing: 12) {
-                    ForEach(PreviewData.actions.indices, id: \.self) { index in
-                        let action = PreviewData.actions[index]
-                        Button {} label: {
-                            Label(action.title, systemImage: action.systemImage)
-                        }
-                        .buttonStyle(.glass(intent: .action, style: .titleOnly))
-                    }
+                    Button {} label: { Label("Add", systemImage: "plus") }
+                        .buttonStyle(.glassProminent(style: .iconOnly()))
+                    Button {} label: { Label("Create", systemImage: "plus.circle") }
+                        .buttonStyle(.glassProminent(style: .titleAndIcon()))
                 }
             }
 
-            PreviewSection(title: "Action - Title and Icon") {
+            PreviewSection(title: "Destructive") {
                 HStack(spacing: 12) {
-                    ForEach(PreviewData.actions.prefix(3).indices, id: \.self) { index in
-                        let action = PreviewData.actions[index]
-                        Button {} label: {
-                            Label(action.title, systemImage: action.systemImage)
-                        }
-                        .buttonStyle(.glass(intent: .action, style: .titleAndIcon()))
-                    }
+                    Button(role: .destructive) {} label: { Label("Delete", systemImage: "trash") }
+                        .buttonStyle(.glass(style: .iconOnly()))
+                    Button(role: .destructive) {} label: { Label("Remove", systemImage: "minus.circle") }
+                        .buttonStyle(.glass(style: .titleAndIcon()))
+                    Button(role: .destructive) {} label: { Label("Clear All", systemImage: "trash") }
+                        .buttonStyle(.glassProminent(style: .titleOnly))
+                }
+            }
+
+            PreviewSection(title: "Disabled") {
+                HStack(spacing: 12) {
+                    Button {} label: { Label("Share", systemImage: "square.and.arrow.up") }
+                        .buttonStyle(.glass(style: .iconOnly()))
+                        .disabled(true)
+                    Button {} label: { Label("Edit", systemImage: "pencil") }
+                        .buttonStyle(.glassProminent(style: .iconOnly()))
+                        .disabled(true)
                 }
             }
         }
@@ -152,15 +155,21 @@ private struct ActionButtonStylesView: View {
 
 // MARK: - Previews
 
-#Preview("Visual Style Catalog - Tabs") {
+#Preview("Visual Styles - Standard") {
     ScrollView {
-        VisualStyleComparisonView(intent: .tab)
+        VisualStyleComparisonView(prominent: false)
     }
 }
 
-#Preview("Visual Style Catalog - Actions") {
+#Preview("Visual Styles - Prominent") {
     ScrollView {
-        ActionButtonStylesView()
+        VisualStyleComparisonView(prominent: true)
+    }
+}
+
+#Preview("Button States") {
+    ScrollView {
+        ButtonStatesView()
     }
 }
 
@@ -176,27 +185,27 @@ private struct ActionButtonStylesView: View {
     FullToolbarStylePreview(style: .iconOnly())
 }
 
-#Preview("Tab vs Action Intent") {
+#Preview("Standard vs Prominent") {
     VStack(spacing: 32) {
-        PreviewSection(title: "Tab Intent (Selection State)") {
-            HStack(spacing: 0) {
-                Button {} label: { Label("Home", systemImage: "house") }
-                    .buttonStyle(.glass(intent: .tab, isSelected: true))
-                Button {} label: { Label("Search", systemImage: "magnifyingglass") }
-                    .buttonStyle(.glass(intent: .tab, isSelected: false))
-            }
-            .padding(3)
-
-        }
-
-        PreviewSection(title: "Action Intent (Press Feedback)") {
+        PreviewSection(title: "Standard (Subtle)") {
             HStack(spacing: 12) {
                 Button {} label: { Label("Share", systemImage: "square.and.arrow.up") }
-                    .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                    .buttonStyle(.glass(style: .iconOnly()))
                 Button {} label: { Label("Add", systemImage: "plus") }
-                    .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                    .buttonStyle(.glass(style: .iconOnly()))
                 Button {} label: { Label("Edit", systemImage: "pencil") }
-                    .buttonStyle(.glass(intent: .action, style: .titleAndIcon()))
+                    .buttonStyle(.glass(style: .titleAndIcon()))
+            }
+        }
+
+        PreviewSection(title: "Prominent (Visible Background)") {
+            HStack(spacing: 12) {
+                Button {} label: { Label("Share", systemImage: "square.and.arrow.up") }
+                    .buttonStyle(.glassProminent(style: .iconOnly()))
+                Button {} label: { Label("Add", systemImage: "plus") }
+                    .buttonStyle(.glassProminent(style: .iconOnly()))
+                Button {} label: { Label("Edit", systemImage: "pencil") }
+                    .buttonStyle(.glassProminent(style: .titleAndIcon()))
             }
         }
     }
@@ -266,8 +275,6 @@ private struct ActionButtonStylesView: View {
 
 /// Shows how glass material appears on different backgrounds.
 private struct GlassMaterialComparisonPreview: View {
-    @State private var selectedTab: PreviewTab = .home
-
     var body: some View {
         VStack(spacing: 0) {
             // Light background
@@ -291,18 +298,14 @@ private struct GlassMaterialComparisonPreview: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(color == .white ? .black : .white)
 
-                HStack(spacing: 0) {
+                HStack(spacing: 12) {
                     ForEach(PreviewTab.allCases, id: \.rawValue) { tab in
-                        Button {
-                            selectedTab = tab
-                        } label: {
+                        Button {} label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 }
-                .padding(3)
-
             }
             .padding(.bottom, 24)
         }

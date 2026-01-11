@@ -167,14 +167,14 @@ private struct MenuPickerInToolbarPreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 },
                 trailing: {
                     Button {} label: {
                         Label("Add", systemImage: "plus")
                     }
-                    .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+                    .buttonStyle(.glass(style: .iconOnly()))
                 }
             )
     }
@@ -251,7 +251,7 @@ private struct MenuPickerAccessoryPreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 }
             }
@@ -300,7 +300,7 @@ private struct MultipleMenuPickersPreview: View {
                         } label: {
                             Label(tab.title, systemImage: tab.systemImage)
                         }
-                        .buttonStyle(.glass(isSelected: selectedTab == tab))
+                        .buttonStyle(.glass())
                     }
                 }
             }

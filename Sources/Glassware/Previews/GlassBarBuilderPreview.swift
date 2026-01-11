@@ -56,14 +56,14 @@ private struct ConditionalItemsPreview: View {
           Button("Cancel", systemImage: "xmark") {
             isEditing = false
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
       } else {
         GlassItem(placement: .bottomLeading) {
           Button("Edit", systemImage: "pencil") {
             isEditing = true
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
       }
 
@@ -76,7 +76,7 @@ private struct ConditionalItemsPreview: View {
             } label: {
               Label(tab.title, systemImage: tab.systemImage)
             }
-            .buttonStyle(.glass(isSelected: selectedTab == tab))
+            .buttonStyle(.glass())
           }
         }
       }
@@ -87,14 +87,14 @@ private struct ConditionalItemsPreview: View {
           Button("Done", systemImage: "checkmark") {
             isEditing = false
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
       } else if hasNotifications {
         GlassItem(placement: .bottomTrailing) {
           Button {} label: {
             Image(systemName: "bell.badge")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
       }
     }
@@ -126,7 +126,7 @@ private struct ForEachItemsPreview: View {
             } label: {
               Label(tab.title, systemImage: tab.systemImage)
             }
-            .buttonStyle(.glass(isSelected: selectedTab == tab))
+            .buttonStyle(.glass())
           }
         }
 
@@ -138,7 +138,7 @@ private struct ForEachItemsPreview: View {
             } label: {
               Label(tab.title, systemImage: tab.systemImage)
             }
-            .buttonStyle(.glass(style: .iconOnly(), isSelected: selectedTab == tab))
+            .buttonStyle(.glass(style: .iconOnly()))
           }
         }
       }
@@ -160,7 +160,7 @@ private struct MultiEdgeLayoutPreview: View {
           Button {} label: {
             Label("Back", systemImage: "chevron.left")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
 
         // Top trailing: Filter toggle
@@ -175,7 +175,7 @@ private struct MultiEdgeLayoutPreview: View {
                 : "line.3.horizontal.decrease.circle"
             )
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
 
         // Bottom leading: Settings
@@ -194,7 +194,7 @@ private struct MultiEdgeLayoutPreview: View {
             } label: {
               Label(tab.title, systemImage: tab.systemImage)
             }
-            .buttonStyle(.glass(isSelected: selectedTab == tab))
+            .buttonStyle(.glass())
           }
         }
 
@@ -203,7 +203,7 @@ private struct MultiEdgeLayoutPreview: View {
           Button {} label: {
             Label("Add", systemImage: "plus")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
       }
   }
@@ -244,7 +244,7 @@ private struct OptionalItemsPreview: View {
           } label: {
             Label(tab.title, systemImage: tab.systemImage)
           }
-          .buttonStyle(.glass(isSelected: selectedTab == tab))
+          .buttonStyle(.glass())
         }
       }
 
@@ -253,7 +253,7 @@ private struct OptionalItemsPreview: View {
           Button {} label: {
             Label("Add", systemImage: "plus")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
       }
 
@@ -316,7 +316,7 @@ private struct AccessoryVariationsPreview: View {
           } label: {
             Label(tab.title, systemImage: tab.systemImage)
           }
-          .buttonStyle(.glass(isSelected: selectedTab == tab))
+          .buttonStyle(.glass())
         }
       }
     }
@@ -365,7 +365,7 @@ private struct ComplexLayoutPreview: View {
           } label: {
             Label("Notifications", systemImage: showingNotifications ? "bell.fill" : "bell")
           }
-          .buttonStyle(.glass(intent: .action, style: .iconOnly()))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
 
         // Vehicle status accessory
@@ -391,7 +391,7 @@ private struct ComplexLayoutPreview: View {
             } label: {
               Label(tab.title, systemImage: tab.systemImage)
             }
-            .buttonStyle(.glass(isSelected: selectedTab == tab))
+            .buttonStyle(.glass())
           }
         }
 
@@ -402,7 +402,7 @@ private struct ComplexLayoutPreview: View {
           } label: {
             Label("Settings", systemImage: "gearshape")
           }
-          .buttonStyle(.glass(style: .iconOnly(), isSelected: selectedTab == .settings))
+          .buttonStyle(.glass(style: .iconOnly()))
         }
       }
   }
