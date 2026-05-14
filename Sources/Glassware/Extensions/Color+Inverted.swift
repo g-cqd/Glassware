@@ -62,11 +62,11 @@ extension Color {
     }
 }
 
-// MARK: - Cached Inverted Colors
+// MARK: - Inverted Primary
 
 extension Color {
-    /// Pre-computed inverted primary color for performance.
-    /// Use this instead of `Color.primary.inverted` in hot paths.
+    /// Convenience alias for `Color.primary.inverted`.
+    /// Note: not cached — `Color` bridges through UIColor lookup on each access.
     static var invertedPrimary: Color {
         Color.primary.inverted
     }

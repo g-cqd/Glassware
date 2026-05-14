@@ -118,7 +118,6 @@ public struct GlassButtonStyle: ButtonStyle {
             .padding(.vertical, metrics.effectiveComponentPadding)
             .padding(.horizontal, effectiveHorizontalPadding)
             .contentShape(.rect)
-            .accessibilityAddTraits(role == .destructive ? .startsMediaSession : [])
             .sensoryFeedback(.selection, trigger: configuration.isPressed) { _, newValue in
                 newValue
             }

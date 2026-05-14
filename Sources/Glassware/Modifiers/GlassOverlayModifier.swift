@@ -29,11 +29,12 @@ private struct GlassHeightPreferenceKey: PreferenceKey {
 
     static func reduce(value: inout GlassHeightReport, nextValue: () -> GlassHeightReport) {
         let next = nextValue()
-        // Merge non-nil values from each edge
-        if let bottom = next.bottom { value.bottom = bottom }
-        if let top = next.top { value.top = top }
-        if let leading = next.leading { value.leading = leading }
-        if let trailing = next.trailing { value.trailing = trailing }
+        // Take the maximum per-edge across the view tree so nested glass containers
+        // can never shrink an outer report. Absent values mean "no contribution".
+        if let bottom = next.bottom { value.bottom = max(value.bottom ?? 0, bottom) }
+        if let top = next.top { value.top = max(value.top ?? 0, top) }
+        if let leading = next.leading { value.leading = max(value.leading ?? 0, leading) }
+        if let trailing = next.trailing { value.trailing = max(value.trailing ?? 0, trailing) }
     }
 }
 
@@ -98,8 +99,6 @@ struct GlassOverlayModifier: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        let _ = Self._printChanges()
-        
         content
             // Inject heights into content's environment
             .environment(\.glassHeights, heights)
@@ -355,12 +354,6 @@ private struct EdgeGlassContainer: View {
     /// Primary groups hidden when collapsed.
     private var effectivePrimaryGroups: [GlassGroup] {
         guard !isCollapsed else { return [] }
-        guard !config.primaryItems.isEmpty else { return [] }
-        return [GlassGroup(id: 0, items: config.primaryItems, trailingSpacer: nil)]
-    }
-
-    /// Converts primary items into GlassGroup format.
-    private var primaryGroups: [GlassGroup] {
         guard !config.primaryItems.isEmpty else { return [] }
         return [GlassGroup(id: 0, items: config.primaryItems, trailingSpacer: nil)]
     }

@@ -240,7 +240,7 @@ private struct VoiceOverPreview: View {
 
                 accessibilityRow(
                     title: "Destructive Button",
-                    traits: ".isButton, .startsMediaSession",
+                    traits: ".isButton",
                     hint: "Double tap to delete"
                 )
 
@@ -462,7 +462,7 @@ private struct BulletPoint: View {
 
             Section("Traits") {
                 LabeledContent("Standard Button", value: ".isButton")
-                LabeledContent("Destructive Button", value: ".startsMediaSession")
+                LabeledContent("Destructive Button", value: ".isButton")
                 LabeledContent("Disabled Button", value: ".notEnabled")
                 LabeledContent("Segmented Picker", value: ".adjustable")
             }

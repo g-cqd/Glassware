@@ -111,8 +111,9 @@ struct GlassTokensTests {
 
     @Test("Animation durations are positive")
     func animationDurations() {
-        #expect(GlassTokens.Animation.selectionDuration > 0)
-        #expect(GlassTokens.Animation.itemDuration > 0)
-        #expect(GlassTokens.Animation.pressDuration > 0)
+        #expect(GlassTokens.Animation.contentTransitionDuration > 0)
+        #expect(GlassTokens.Animation.disabledTransitionDuration > 0)
+        #expect(GlassTokens.Animation.selectionSpringResponse > 0)
+        #expect(GlassTokens.Animation.collapseSpringResponse > 0)
     }
 }

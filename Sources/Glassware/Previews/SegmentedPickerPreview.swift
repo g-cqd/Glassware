@@ -68,7 +68,7 @@ private struct InteractivePickerPreview: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .center)
-        .background(.gray.gradient)
+        .background(.black.gradient)
     }
 }
 
