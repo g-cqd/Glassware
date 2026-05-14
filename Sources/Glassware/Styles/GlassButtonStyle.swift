@@ -298,7 +298,7 @@ public struct GlassProminentButtonStyle: ButtonStyle {
             .fontDesign(.rounded)
             .imageScale(imageScale)
             .foregroundStyle(foregroundColor(role: role))
-            .opacity(labelOpacity)
+            .opacity(labelOpacity(isPressed: configuration.isPressed))
             .frame(
                 minWidth: effectiveVisualStyle.isIconOnly ? scaledSize : nil,
                 idealWidth: effectiveVisualStyle.isIconOnly ? nil : scaledMinWidth,
@@ -393,9 +393,11 @@ public struct GlassProminentButtonStyle: ButtonStyle {
         role == .destructive ? .white : .primary
     }
 
-    /// Label opacity based on enabled state.
-    private var labelOpacity: CGFloat {
-        isEnabled ? 1 : GlassTokens.Opacity.disabled
+    /// Label opacity reacts to both enabled and press state so the prominent
+    /// style gets the same press feedback as the standard one (audit 1.8).
+    private func labelOpacity(isPressed: Bool) -> CGFloat {
+        if !isEnabled { return GlassTokens.Opacity.disabled }
+        return isPressed ? 0.6 : 1
     }
 }
 
