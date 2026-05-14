@@ -14,9 +14,13 @@ private let package = Package(
             targets: ["Glassware"]
         )
     ],
+    dependencies: [
+        .package(url: "https://github.com/Aemi-Studio/AemiSDR.git", revision: "0fa9c72f95e0be3859bc6ff8129f0f58ccc6dfda")
+    ],
     targets: [
         .target(
             name: "Glassware",
+            dependencies: ["AemiSDR"],
             swiftSettings: swiftSettings
         ),
         .testTarget(

@@ -5,6 +5,7 @@
 //  Selection indicator for tab-style buttons and pickers.
 //
 
+import AemiSDR
 import SwiftUI
 
 // MARK: - Selection Thumb
@@ -30,7 +31,7 @@ public struct SelectionThumb<S: Shape>: View {
         shape
             .fill(.clear)
             .background {
-                VisualEffect(
+                VisualEffectView(
                     colorTint: Color.primary,
                     colorTintAlpha: GlassTokens.SelectionThumb.fillOpacity,
                     blurRadius: 10,
