@@ -35,7 +35,26 @@ jobs:
         # Xcode 26 ships the Metal compiler as a separately-downloadable
         # component. AemiSDR's MetalShaderBuildPlugin invokes `metal` during
         # build, so the toolchain must be present.
-        run: sudo xcodebuild -downloadComponent MetalToolchain
+        #
+        # Apple's MobileAsset CDN intermittently returns "Failed fetching
+        # catalog" — observed once during this workflow's bring-up. Retry
+        # with backoff before giving up so a single CDN blip doesn't fail
+        # a PR run.
+        run: |
+          set +e
+          for attempt in 1 2 3 4 5; do
+            echo "Metal toolchain download attempt $attempt..."
+            sudo xcodebuild -downloadComponent MetalToolchain
+            status=$?
+            if [ "$status" -eq 0 ]; then
+              echo "Metal toolchain installed."
+              exit 0
+            fi
+            echo "Download failed (status $status); sleeping $((attempt * 10))s before retry."
+            sleep $((attempt * 10))
+          done
+          echo "Metal toolchain still unavailable after 5 attempts." >&2
+          exit 1
 
       - name: Resolve simulator UDID
         # The runner image installs multiple iOS simulator runtimes (e.g.
