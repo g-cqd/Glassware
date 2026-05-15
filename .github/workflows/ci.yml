@@ -28,6 +28,14 @@ jobs:
           xcodebuild -version
           swift --version
 
+      - name: Install Metal Toolchain
+        # As of Xcode 26, the Metal compiler ships as a separately-downloadable
+        # component, not as part of the base Xcode install. AemiSDR's
+        # MetalShaderBuildPlugin invokes `metal` during `swift build` to
+        # compile its .metal sources to .metallib, so the toolchain must be
+        # present before we kick off the build.
+        run: sudo xcodebuild -downloadComponent MetalToolchain
+
       - name: Build
         run: swift build
 
@@ -46,6 +54,9 @@ jobs:
           sudo xcode-select -s "$(ls -d /Applications/Xcode_26* | sort -V | tail -1)"
           xcodebuild -version
 
+      - name: Install Metal Toolchain
+        run: sudo xcodebuild -downloadComponent MetalToolchain
+
       - name: List available iOS simulators
         run: xcrun simctl list devices available | grep -i iphone
 
@@ -55,6 +66,10 @@ jobs:
         run: swift package resolve
 
       - name: Run snapshot tests
+        # `-skipPackagePluginValidation` allows AemiSDR's MetalShaderBuildPlugin
+        # to run without an interactive trust prompt (CI runner has no UI).
+        # `-skipMacroValidation` does the same for swift-syntax macros pulled
+        # in transitively by swift-snapshot-testing.
         run: |
           set -o pipefail
           xcodebuild test \
@@ -63,6 +78,8 @@ jobs:
             -only-testing:GlasswareSnapshotTests \
             -enableCodeCoverage NO \
             -resultBundlePath SnapshotTestResults.xcresult \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO \
             | tee xcodebuild.log
 

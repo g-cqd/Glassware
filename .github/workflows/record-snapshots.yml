@@ -34,6 +34,9 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s "$(ls -d /Applications/Xcode_26* | sort -V | tail -1)"
 
+      - name: Install Metal Toolchain
+        run: sudo xcodebuild -downloadComponent MetalToolchain
+
       - name: Force recording on
         run: |
           # Flip the SnapshotTestCase.isRecording flag for this run only. The
@@ -54,6 +57,8 @@ jobs:
             -scheme Glassware \
             -destination 'platform=iOS Simulator,name=${{ github.event.inputs.simulator }},OS=latest' \
             -only-testing:GlasswareSnapshotTests \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Revert isRecording flip
