@@ -331,23 +331,29 @@ struct GlassContainer: View {
             //
             // Circle inscribes a square of side ≈ 0.707·D. An icon glyph
             // (`Image(systemName:)`) is square-bounding-boxed, so without
-            // extra padding the icon's corners can clip against the
-            // circle perimeter — and worse, the press-state lens refraction
-            // from `glass.interactive()` amplifies that visible clip
-            // (reported 2026-05-15, the bottom-right of a 4-grid glyph
-            // appeared squashed when tapped).
+            // extra clearance the icon's diagonal corners clip against the
+            // circle perimeter — and the press-state lens refraction from
+            // `glass.interactive()` amplifies that visible clip (reported
+            // 2026-05-15, bottom-right of a 4-grid glyph squashed on tap).
             //
-            // The base `effectiveContainerPadding` is purely a glass-effect
-            // breathing margin (3-6pt by density). We bolt on an additional
-            // ~6pt for the circular case so the inscribed square has room
-            // for the icon's diagonal corners + a small refraction guard.
-            NamespacedContainer(placement: placement, context: context) { builtContent }
-                .padding(metrics.effectiveContainerPadding + 6)
-                .frame(
-                    minWidth: edge.isVertical ? crossAxisSize : nil,
-                    minHeight: edge.isHorizontal ? crossAxisSize : nil
-                )
-                .glassEffect(glass.interactive(), in: .circle)
+            // We solve this by SCALING THE ICON DOWN inside the container
+            // rather than growing the container outward (the previous
+            // attempt at +6pt padding made every single-item circular
+            // button — settings, plus, customize — visibly bigger across
+            // the app). `scaleEffect(0.85)` brings the icon's bounding box
+            // from ~32pt to ~27pt inside a 44pt circle (inscribed square
+            // ≈ 31pt), so the diagonal fits with a small refraction guard
+            // and the OUTER container size is unchanged.
+            NamespacedContainer(placement: placement, context: context) {
+                builtContent
+                    .scaleEffect(0.85)
+            }
+            .padding(metrics.effectiveContainerPadding)
+            .frame(
+                minWidth: edge.isVertical ? crossAxisSize : nil,
+                minHeight: edge.isHorizontal ? crossAxisSize : nil
+            )
+            .glassEffect(glass.interactive(), in: .circle)
         } else if edge.isVertical {
             // Vertical edge: all items constrained to icon size for consistency
             let shape: AnyShape = isSingleItem ? AnyShape(.circle) : AnyShape(.capsule)
