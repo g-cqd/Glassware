@@ -61,16 +61,25 @@ struct GlassOverlayModifier: ViewModifier {
     let items: [AnyGlassContent]
     let glass: Glass
 
+    /// Configurations grouped by edge.
+    ///
+    /// Computed once in `init` so the four `.overlay` blocks below can each read
+    /// the partitioned configuration without re-running the partition pass on
+    /// every body evaluation. Previously this was a computed property — every
+    /// `body` re-evaluation (one per scroll tick during a collapse animation)
+    /// partitioned `items` four times.
+    private let edgeConfigurations: [GlassEdge: EdgeToolbarConfiguration]
+
     /// Tracked heights for all toolbar edges.
     @State private var heights: GlassHeightReport = .empty
 
     init(items: [AnyGlassContent], glass: Glass) {
         self.items = items
         self.glass = glass
+        self.edgeConfigurations = Self.partition(items: items)
     }
 
-    /// Configurations grouped by edge.
-    private var edgeConfigurations: [GlassEdge: EdgeToolbarConfiguration] {
+    private static func partition(items: [AnyGlassContent]) -> [GlassEdge: EdgeToolbarConfiguration] {
         var configs: [GlassEdge: EdgeToolbarConfiguration] = [:]
 
         for item in items {

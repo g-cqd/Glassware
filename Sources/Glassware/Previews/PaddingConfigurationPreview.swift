@@ -48,10 +48,10 @@ private struct PaddingPreview: View {
     private var configDescription: String {
         var parts: [String] = []
 
-        if config.additionalPadding < 0 {
-            parts.append("Density-based padding")
+        if let value = config.additionalPadding {
+            parts.append("Additional: \(Int(value))pt")
         } else {
-            parts.append("Additional: \(Int(config.additionalPadding))pt")
+            parts.append("Density-based padding")
         }
 
         if config.ignoresSafeArea {
@@ -145,7 +145,7 @@ private struct PaddingComparisonView: View {
 
                 // Toolbar representation
                 let bottomOffset = config.ignoresSafeArea ? 0 : 34
-                let padding = config.additionalPadding < 0 ? 24 : config.additionalPadding
+                let padding = config.additionalPadding ?? 24
 
                 RoundedRectangle(cornerRadius: 20)
                     .fill(.primary.opacity(0.2))

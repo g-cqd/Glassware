@@ -10,6 +10,12 @@ import SwiftUI
 // MARK: - Scroll Offset Tracking Modifier
 
 /// Modifier that tracks scroll content offset using onScrollGeometryChange.
+///
+/// The reported offset is quantised to integer points before being written back
+/// to the binding. On ProMotion devices `onScrollGeometryChange` fires up to 120
+/// times per second with sub-pixel deltas; without quantisation every tick
+/// triggers downstream environment writes and re-evaluations of any view that
+/// reads `glassScrollOffset` or derives state from the binding.
 struct ScrollOffsetTrackingModifier: ViewModifier {
     @Binding var offset: CGFloat
 
@@ -19,7 +25,10 @@ struct ScrollOffsetTrackingModifier: ViewModifier {
                 // contentOffset.y is positive when scrolled down
                 geometry.contentOffset.y
             } action: { _, newOffset in
-                offset = newOffset
+                let quantised = newOffset.rounded()
+                if offset != quantised {
+                    offset = quantised
+                }
             }
     }
 }

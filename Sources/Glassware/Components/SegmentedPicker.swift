@@ -5,7 +5,13 @@
 //  Custom segmented picker with draggable selection capsule.
 //
 
+import OSLog
 import SwiftUI
+
+private let segmentedPickerLogger = Logger(
+    subsystem: "studio.aemi.Glassware",
+    category: "SegmentedPicker"
+)
 
 // MARK: - Sizing
 
@@ -404,7 +410,7 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
     /// Index of the selected child, derived from tag values via reflection.
     private var selectedIndex: Int? {
         for (index, child) in children.enumerated() {
-            if let value: Value = try? child.getTag(), value == selection {
+            if let value: Value = child.extractTag(), value == selection {
                 return index
             }
         }
@@ -512,8 +518,17 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
                     .onGeometryChange(for: CGRect.self) { proxy in
                         proxy.frame(in: .named("picker"))
                     } action: { frame in
-                        if cellFrames[index] != frame {
-                            cellFrames[index] = frame
+                        // Round to integer points before comparing — sub-pixel
+                        // jitter during Dynamic Type / resize animations otherwise
+                        // fires this writer at every layout pass.
+                        let rounded = CGRect(
+                            x: frame.minX.rounded(),
+                            y: frame.minY.rounded(),
+                            width: frame.width.rounded(),
+                            height: frame.height.rounded()
+                        )
+                        if cellFrames[index] != rounded {
+                            cellFrames[index] = rounded
                         }
                     }
             }
@@ -561,7 +576,7 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
                 sizedChild(child.hidden())
                     .contentShape(.rect)
                     .onTapGesture {
-                        if let value: Value = try? child.getTag() {
+                        if let value: Value = child.extractTag() {
                             selection = value
                         }
                     }
@@ -594,14 +609,14 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
         case .increment:
             let nextIndex = currentIndex + 1
             if nextIndex < children.count {
-                if let value: Value = try? children[nextIndex].getTag() {
+                if let value: Value = children[nextIndex].extractTag() {
                     selection = value
                 }
             }
         case .decrement:
             let prevIndex = currentIndex - 1
             if prevIndex >= 0 {
-                if let value: Value = try? children[prevIndex].getTag() {
+                if let value: Value = children[prevIndex].extractTag() {
                     selection = value
                 }
             }
@@ -653,7 +668,7 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
                 dragOffset = 0
 
                 if let index = closestIndex,
-                   let value: Value = try? children[index].getTag() {
+                   let value: Value = children[index].extractTag() {
                     selection = value
                 }
             }
@@ -687,6 +702,23 @@ extension View {
         }
 
         throw TagExtractionError.tagNotFound
+    }
+
+    /// Wraps `getTag()` with a loud failure mode: logs the error via OSLog and
+    /// trips `assertionFailure` in debug builds so SwiftUI internal layout drift
+    /// (which would otherwise silently freeze the picker) is caught immediately.
+    func extractTag<TagType: Hashable>() -> TagType? {
+        do {
+            return try getTag()
+        } catch {
+            segmentedPickerLogger.error(
+                "Tag extraction failed — SwiftUI _VariadicView internal layout may have changed: \(String(describing: error), privacy: .public)"
+            )
+            assertionFailure(
+                "SegmentedPicker: tag extraction failed (\(error)). The `_VariadicView.Children` reflection path is broken; the picker will not respond to taps or drags."
+            )
+            return nil
+        }
     }
 }
 

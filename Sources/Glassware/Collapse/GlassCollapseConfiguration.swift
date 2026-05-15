@@ -56,6 +56,11 @@ public enum GlassCollapseState: Sendable, Equatable {
 /// ## Hysteresis
 /// The separate collapse and expand thresholds create hysteresis,
 /// preventing state flickering when scrolling near the boundary.
+///
+/// ## Invariant
+/// `expandThreshold` MUST be strictly less than `collapseThreshold`. Crossed
+/// thresholds create an oscillating state machine — `init` enforces this
+/// with a `precondition`.
 public struct GlassCollapseConfiguration: Sendable, Equatable {
     /// Which side to merge primary content into.
     public let mergeSide: GlassMergeSide
@@ -91,6 +96,10 @@ public struct GlassCollapseConfiguration: Sendable, Equatable {
         expandThreshold: CGFloat = 30,
         animation: Animation = .spring(duration: 0.35, bounce: 0.2)
     ) {
+        precondition(
+            expandThreshold < collapseThreshold,
+            "GlassCollapseConfiguration requires expandThreshold (\(expandThreshold)) < collapseThreshold (\(collapseThreshold)) — crossed thresholds cause state oscillation."
+        )
         self.mergeSide = mergeSide
         self.mergeIcon = mergeIcon
         self.collapseThreshold = collapseThreshold

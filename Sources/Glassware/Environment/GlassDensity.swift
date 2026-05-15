@@ -144,7 +144,9 @@ public struct GlassEdgeContext: Sendable, Equatable {
 /// Use this to customize how the toolbar handles safe area insets at the bottom edge.
 public struct GlassPaddingConfiguration: Sendable, Equatable {
     /// Additional padding from the safe area (or screen edge if ignoring safe area).
-    public let additionalPadding: CGFloat
+    ///
+    /// `nil` means "use the density-based value from `GlassMetrics.edgePadding`".
+    public let additionalPadding: CGFloat?
 
     /// Whether to ignore the bottom safe area (home indicator).
     public let ignoresSafeArea: Bool
@@ -155,7 +157,7 @@ public struct GlassPaddingConfiguration: Sendable, Equatable {
 
     /// Default configuration: respects safe area with density-based padding.
     public static let `default` = GlassPaddingConfiguration(
-        additionalPadding: -1,  // Sentinel: use density-based value
+        additionalPadding: nil,
         ignoresSafeArea: false,
         externalPadding: 16
     )
@@ -177,11 +179,11 @@ public struct GlassPaddingConfiguration: Sendable, Equatable {
     /// Creates a custom padding configuration.
     ///
     /// - Parameters:
-    ///   - additionalPadding: Extra padding from safe area/screen edge. Use `-1` for density-based.
+    ///   - additionalPadding: Extra padding from safe area/screen edge. Pass `nil` (the default) to use the density-based value.
     ///   - ignoresSafeArea: If true, positions toolbar at screen bottom ignoring home indicator.
     ///   - externalPadding: Horizontal padding from screen edges. Defaults to 16.
     public init(
-        additionalPadding: CGFloat = -1,
+        additionalPadding: CGFloat? = nil,
         ignoresSafeArea: Bool = false,
         externalPadding: CGFloat = 16
     ) {
@@ -190,12 +192,9 @@ public struct GlassPaddingConfiguration: Sendable, Equatable {
         self.externalPadding = externalPadding
     }
 
-    /// Resolves additional padding, using density-based value if sentinel is set.
+    /// Resolves additional padding, using density-based value when unset.
     func resolvedAdditionalPadding(density: GlassDensity) -> CGFloat {
-        if additionalPadding < 0 {
-            return GlassMetrics(density: density).edgePadding
-        }
-        return additionalPadding
+        additionalPadding ?? GlassMetrics(density: density).edgePadding
     }
 }
 

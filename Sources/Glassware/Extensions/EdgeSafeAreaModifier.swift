@@ -25,7 +25,7 @@ import SwiftUI
 ///
 /// The `GlassPaddingConfiguration` controls:
 /// - `externalPadding`: Always used for horizontal margins (default: 16)
-/// - `additionalPadding`: Extra padding from safe area edge (-1 uses density-based)
+/// - `additionalPadding`: Extra padding from safe area edge (`nil` uses density-based)
 /// - `ignoresSafeArea`: When true, positions at screen edge ignoring safe area
 struct EdgeSafeAreaModifier: ViewModifier {
     let edge: GlassEdge
