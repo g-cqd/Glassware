@@ -24,7 +24,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Select Xcode
         run: |
@@ -37,37 +37,56 @@ jobs:
         # build, so the toolchain must be present.
         run: sudo xcodebuild -downloadComponent MetalToolchain
 
-      - name: List available iOS simulators
-        run: xcrun simctl list devices available | grep -i iphone
+      - name: Resolve simulator UDID
+        # The runner image installs multiple iOS simulator runtimes (e.g.
+        # 26.0 and 26.2 both ship with Xcode 26.3). Passing `OS=latest`
+        # in -destination produces the
+        #   "xcodebuild: WARNING: Using the first of multiple matching
+        #    destinations"
+        # warning, which obscures real diagnostics. Resolving a specific
+        # UDID at runtime sidesteps that — and adapts automatically when
+        # the runner image updates its iOS SDK.
+        id: simulator
+        run: |
+          UDID=$(xcrun simctl list devices available --json \
+            | python3 -c "
+          import json, sys, re
+          data = json.load(sys.stdin)
+          # Pick the highest-versioned iOS runtime, then an iPhone 17 Pro
+          # within it (any modern iPhone would work; pinning to one model
+          # makes baselines deterministic).
+          runtimes = sorted(
+              [k for k in data['devices'] if 'SimRuntime.iOS' in k],
+              key=lambda k: tuple(int(p) for p in re.findall(r'\d+', k))
+          )
+          for rt in reversed(runtimes):
+              for device in data['devices'][rt]:
+                  if device['name'] == 'iPhone 17 Pro':
+                      print(device['udid'])
+                      sys.exit(0)
+          sys.exit('No iPhone 17 Pro simulator available')
+          ")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "Using simulator: $UDID"
 
-      - name: Resolve packages
-        run: xcodebuild -resolvePackageDependencies -scheme Glassware
-
-      - name: Run logic tests
+      - name: Run tests
+        # Both targets in one invocation: xcodebuild caches the build
+        # between -only-testing entries, so running them together halves
+        # the build time vs two separate `xcodebuild test` calls.
+        # `-skipPackagePluginValidation` allows AemiSDR's
+        # MetalShaderBuildPlugin to run without an interactive trust
+        # prompt (CI runner has no UI). `-skipMacroValidation` does the
+        # same for swift-syntax macros pulled in transitively by
+        # swift-snapshot-testing.
         run: |
           set -o pipefail
           xcodebuild test \
             -scheme Glassware \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
             -only-testing:GlasswareTests \
-            -enableCodeCoverage NO \
-            -skipPackagePluginValidation \
-            -skipMacroValidation \
-            CODE_SIGNING_ALLOWED=NO
-
-      - name: Run snapshot tests
-        # `-skipPackagePluginValidation` allows AemiSDR's MetalShaderBuildPlugin
-        # to run without an interactive trust prompt (CI runner has no UI).
-        # `-skipMacroValidation` does the same for swift-syntax macros pulled
-        # in transitively by swift-snapshot-testing.
-        run: |
-          set -o pipefail
-          xcodebuild test \
-            -scheme Glassware \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
             -only-testing:GlasswareSnapshotTests \
             -enableCodeCoverage NO \
-            -resultBundlePath SnapshotTestResults.xcresult \
+            -resultBundlePath TestResults.xcresult \
             -skipPackagePluginValidation \
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO
@@ -76,8 +95,8 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: snapshot-result-bundle
-          path: SnapshotTestResults.xcresult
+          name: test-result-bundle
+          path: TestResults.xcresult
           retention-days: 7
 
       - name: Upload snapshot diffs on failure
