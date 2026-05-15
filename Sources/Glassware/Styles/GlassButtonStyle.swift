@@ -54,10 +54,17 @@ public struct GlassButtonStyle: ButtonStyle {
         forcedVisualStyle ?? visualStyle
     }
 
-    /// Base sizes that scale with Dynamic Type.
-    @ScaledMetric(relativeTo: .body) private var baseMinWidth: CGFloat = 64
-    @ScaledMetric(relativeTo: .body) private var baseMinHeight: CGFloat = 44
-    @ScaledMetric(relativeTo: .body) private var baseSize: CGFloat = 44
+    /// Base container dimensions — deliberately NOT `@ScaledMetric`.
+    /// Container size stays fixed to match the native nav-bar / toolbar
+    /// button container (44pt tap target on iOS). Dynamic Type scales the
+    /// glyph *inside* the container via `Image.Scale` + system font
+    /// metrics; the icon-glyph boost is clamped at 1.4× so it can never
+    /// overflow the fixed container at AX5. Growing the container itself
+    /// with Dynamic Type made the GlassBar overflow off-screen edges at
+    /// large accessibility sizes (reported 2026-05-15).
+    private let baseMinWidth: CGFloat = 64
+    private let baseMinHeight: CGFloat = 44
+    private let baseSize: CGFloat = 44
 
     // MARK: - Computed Properties
 
@@ -108,6 +115,10 @@ public struct GlassButtonStyle: ButtonStyle {
             .font(.body.weight(.medium))
             .fontDesign(.rounded)
             .imageScale(imageScale)
+            // Clamp icon-only Dynamic Type so the glyph can't outgrow the
+            // fixed container. Title-bearing variants stay unclamped so
+            // text still scales with user preference (label can wrap).
+            .dynamicTypeSize(effectiveVisualStyle.isIconOnly ? .xSmall ... .xxLarge : .xSmall ... .accessibility5)
             .foregroundStyle(foregroundColor(role: role))
             .opacity(labelOpacity(isPressed: configuration.isPressed))
             .frame(
@@ -243,10 +254,17 @@ public struct GlassProminentButtonStyle: ButtonStyle {
         forcedVisualStyle ?? visualStyle
     }
 
-    /// Base sizes that scale with Dynamic Type.
-    @ScaledMetric(relativeTo: .body) private var baseMinWidth: CGFloat = 64
-    @ScaledMetric(relativeTo: .body) private var baseMinHeight: CGFloat = 44
-    @ScaledMetric(relativeTo: .body) private var baseSize: CGFloat = 44
+    /// Base container dimensions — deliberately NOT `@ScaledMetric`.
+    /// Container size stays fixed to match the native nav-bar / toolbar
+    /// button container (44pt tap target on iOS). Dynamic Type scales the
+    /// glyph *inside* the container via `Image.Scale` + system font
+    /// metrics; the icon-glyph boost is clamped at 1.4× so it can never
+    /// overflow the fixed container at AX5. Growing the container itself
+    /// with Dynamic Type made the GlassBar overflow off-screen edges at
+    /// large accessibility sizes (reported 2026-05-15).
+    private let baseMinWidth: CGFloat = 64
+    private let baseMinHeight: CGFloat = 44
+    private let baseSize: CGFloat = 44
 
     // MARK: - Computed Properties
 
@@ -297,6 +315,9 @@ public struct GlassProminentButtonStyle: ButtonStyle {
             .font(.body.weight(.medium))
             .fontDesign(.rounded)
             .imageScale(imageScale)
+            // Clamp icon-only Dynamic Type so the glyph can't outgrow the
+            // fixed container. Title-bearing variants stay unclamped.
+            .dynamicTypeSize(effectiveVisualStyle.isIconOnly ? .xSmall ... .xxLarge : .xSmall ... .accessibility5)
             .foregroundStyle(foregroundColor(role: role))
             .opacity(labelOpacity(isPressed: configuration.isPressed))
             .frame(
