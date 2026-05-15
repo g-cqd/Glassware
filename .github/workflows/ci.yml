@@ -10,40 +10,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Why a single iOS-Simulator job rather than splitting logic vs snapshot:
+# the package targets .iOS(.v26) and .macOS(.v26). The GitHub-hosted
+# macos-15 runner ships macOS 15 at runtime, where SwiftUI lacks iOS-26
+# additions like `GlassEffectContainer`. `swift test` on the host fails
+# to dlopen the test bundle (symbol not found). xcodebuild against an
+# iOS 26 simulator is the only environment where the library actually
+# loads, so both logic and snapshot tests run there.
+
 jobs:
-  logic-tests:
-    name: Logic tests (macOS host)
-    runs-on: macos-15
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Select Xcode
-        run: |
-          # Use the latest Xcode that ships an iOS 26 SDK. macos-15 GHA runners
-          # currently provide Xcode 26.x; if multiple are installed, pick the
-          # highest version explicitly so future image updates don't silently
-          # pin us to an older toolchain.
-          sudo xcode-select -s "$(ls -d /Applications/Xcode_26* | sort -V | tail -1)"
-          xcodebuild -version
-          swift --version
-
-      - name: Install Metal Toolchain
-        # As of Xcode 26, the Metal compiler ships as a separately-downloadable
-        # component, not as part of the base Xcode install. AemiSDR's
-        # MetalShaderBuildPlugin invokes `metal` during `swift build` to
-        # compile its .metal sources to .metallib, so the toolchain must be
-        # present before we kick off the build.
-        run: sudo xcodebuild -downloadComponent MetalToolchain
-
-      - name: Build
-        run: swift build
-
-      - name: Run logic tests
-        run: swift test --filter GlasswareTests
-
-  snapshot-tests:
-    name: Snapshot tests (iOS Simulator)
+  tests:
+    name: Tests (iOS Simulator)
     runs-on: macos-15
     timeout-minutes: 30
     steps:
@@ -55,15 +32,28 @@ jobs:
           xcodebuild -version
 
       - name: Install Metal Toolchain
+        # Xcode 26 ships the Metal compiler as a separately-downloadable
+        # component. AemiSDR's MetalShaderBuildPlugin invokes `metal` during
+        # build, so the toolchain must be present.
         run: sudo xcodebuild -downloadComponent MetalToolchain
 
       - name: List available iOS simulators
         run: xcrun simctl list devices available | grep -i iphone
 
-      # Resolve dependencies once so xcodebuild's later log output stays focused
-      # on the actual test run.
       - name: Resolve packages
-        run: swift package resolve
+        run: xcodebuild -resolvePackageDependencies -scheme Glassware
+
+      - name: Run logic tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -scheme Glassware \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            -only-testing:GlasswareTests \
+            -enableCodeCoverage NO \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Run snapshot tests
         # `-skipPackagePluginValidation` allows AemiSDR's MetalShaderBuildPlugin
@@ -80,8 +70,7 @@ jobs:
             -resultBundlePath SnapshotTestResults.xcresult \
             -skipPackagePluginValidation \
             -skipMacroValidation \
-            CODE_SIGNING_ALLOWED=NO \
-            | tee xcodebuild.log
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Upload result bundle on failure
         if: failure()
