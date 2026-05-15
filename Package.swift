@@ -15,7 +15,11 @@ private let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/Aemi-Studio/AemiSDR.git", revision: "7438a5dfc79e3d72d027a32be74f689c4e0f8e2e")
+        .package(url: "https://github.com/Aemi-Studio/AemiSDR.git", revision: "7438a5dfc79e3d72d027a32be74f689c4e0f8e2e"),
+        // Snapshot testing — pinned exact to keep snapshot baselines stable
+        // across dependency-resolver runs. Bump deliberately when intentionally
+        // regenerating snapshots.
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", exact: "1.19.2")
     ],
     targets: [
         .target(
@@ -27,12 +31,35 @@ private let package = Package(
             name: "GlasswareTests",
             dependencies: ["Glassware"],
             swiftSettings: swiftSettings
+        ),
+        // Snapshot tests are iOS-only at runtime (glass effects + UIHostingController
+        // are UIKit-bound). The target compiles on macOS so `swift test` and
+        // Xcode Indexing don't error, but the test bodies are wrapped in
+        // `#if canImport(UIKit) && !targetEnvironment(macCatalyst)` so they
+        // only execute when running on the iOS Simulator via `xcodebuild test`.
+        .testTarget(
+            name: "GlasswareSnapshotTests",
+            dependencies: [
+                "Glassware",
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
+            ],
+            exclude: ["__Snapshots__"],
+            swiftSettings: snapshotTestSwiftSettings
         )
     ]
 )
 
 private let swiftSettings: [SwiftSetting] = [
     .strictMemorySafety(),
+    .swiftLanguageMode(.version("6.2")),
+    .enableUpcomingFeature("StrictConcurrency")
+]
+
+// Snapshot tests use XCTest (Swift Testing support in swift-snapshot-testing
+// 1.19 is still beta, and mixing the two frameworks in a single target is
+// unsupported), and pull in UIKit symbols when running on iOS — strict
+// memory safety would otherwise reject `UIHostingController`'s ObjC bridge.
+private let snapshotTestSwiftSettings: [SwiftSetting] = [
     .swiftLanguageMode(.version("6.2")),
     .enableUpcomingFeature("StrictConcurrency")
 ]

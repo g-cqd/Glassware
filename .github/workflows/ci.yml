@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel in-progress runs when a new push lands on the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  logic-tests:
+    name: Logic tests (macOS host)
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          # Use the latest Xcode that ships an iOS 26 SDK. macos-15 GHA runners
+          # currently provide Xcode 26.x; if multiple are installed, pick the
+          # highest version explicitly so future image updates don't silently
+          # pin us to an older toolchain.
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_26* | sort -V | tail -1)"
+          xcodebuild -version
+          swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Run logic tests
+        run: swift test --filter GlasswareTests
+
+  snapshot-tests:
+    name: Snapshot tests (iOS Simulator)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_26* | sort -V | tail -1)"
+          xcodebuild -version
+
+      - name: List available iOS simulators
+        run: xcrun simctl list devices available | grep -i iphone
+
+      # Resolve dependencies once so xcodebuild's later log output stays focused
+      # on the actual test run.
+      - name: Resolve packages
+        run: swift package resolve
+
+      - name: Run snapshot tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -scheme Glassware \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            -only-testing:GlasswareSnapshotTests \
+            -enableCodeCoverage NO \
+            -resultBundlePath SnapshotTestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee xcodebuild.log
+
+      - name: Upload result bundle on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-result-bundle
+          path: SnapshotTestResults.xcresult
+          retention-days: 7
+
+      - name: Upload snapshot diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-failure-images
+          # SnapshotTesting writes both `*-failure-*` (the diff) and the
+          # original `actual` PNG next to the committed baseline when an
+          # assertion fails. Uploading both lets reviewers compare in the
+          # GHA UI without checking the branch out.
+          path: |
+            **/__Snapshots__/**/*failure*.png
+            **/__Snapshots__/**/*actual*.png
+          retention-days: 7
+          if-no-files-found: ignore

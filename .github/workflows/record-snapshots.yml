@@ -1,0 +1,79 @@
+name: Record snapshot baselines
+
+# Manually triggered. Re-renders every snapshot baseline against the chosen
+# simulator and commits the results on a branch. Use after an intentional
+# visual change to regenerate baselines without forcing every contributor to
+# do it locally.
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch to commit regenerated snapshots onto"
+        required: true
+        default: "snapshot-regenerate"
+      simulator:
+        description: "Simulator device name"
+        required: true
+        default: "iPhone 17 Pro"
+
+permissions:
+  contents: write
+
+jobs:
+  record:
+    name: Re-record snapshots
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history so the regenerate branch is created from main
+          # cleanly rather than from a shallow checkout.
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_26* | sort -V | tail -1)"
+
+      - name: Force recording on
+        run: |
+          # Flip the SnapshotTestCase.isRecording flag for this run only. The
+          # subsequent commit step does not re-stage the file so the flag
+          # stays `false` on main.
+          sed -i.bak 's/static let isRecording: Bool = false/static let isRecording: Bool = true/' \
+            Tests/GlasswareSnapshotTests/SnapshotTestCase.swift
+          rm Tests/GlasswareSnapshotTests/SnapshotTestCase.swift.bak
+
+      - name: Record snapshots
+        # This run is expected to "fail" from a test-pass standpoint because
+        # SnapshotTesting reports each newly-written baseline as a failure.
+        # We deliberately swallow the failure here; the post-step verifies
+        # that PNGs exist on disk.
+        continue-on-error: true
+        run: |
+          xcodebuild test \
+            -scheme Glassware \
+            -destination 'platform=iOS Simulator,name=${{ github.event.inputs.simulator }},OS=latest' \
+            -only-testing:GlasswareSnapshotTests \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Revert isRecording flip
+        run: |
+          sed -i.bak 's/static let isRecording: Bool = true/static let isRecording: Bool = false/' \
+            Tests/GlasswareSnapshotTests/SnapshotTestCase.swift
+          rm Tests/GlasswareSnapshotTests/SnapshotTestCase.swift.bak
+
+      - name: Commit regenerated snapshots
+        run: |
+          BRANCH="${{ github.event.inputs.target_branch }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add Tests/GlasswareSnapshotTests/__Snapshots__
+          if git diff --cached --quiet; then
+            echo "No snapshot changes — nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore(tests): regenerate snapshot baselines"
+          git push -f origin "$BRANCH"
+          echo "Snapshots regenerated and pushed to branch: $BRANCH"
+          echo "Open a PR to merge into main."

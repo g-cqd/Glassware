@@ -1,0 +1,8 @@
+# Snapshot tests commit PNG baselines. Marking them explicitly binary
+# avoids accidental EOL conversion on Windows-developer checkouts and keeps
+# `git diff --stat` outputs clean.
+*.png binary
+
+# Swift source files use LF endings universally to match the rest of the
+# Apple ecosystem tooling.
+*.swift text eol=lf
