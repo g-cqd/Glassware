@@ -58,12 +58,12 @@ jobs:
 
       - name: Resolve simulator UDID
         # The runner image installs multiple iOS simulator runtimes (e.g.
-        # 26.0 and 26.2 both ship with Xcode 26.3). Passing `OS=latest`
-        # in -destination produces the
-        #   "xcodebuild: WARNING: Using the first of multiple matching
-        #    destinations"
-        # warning, which obscures real diagnostics. Resolving a specific
-        # UDID at runtime sidesteps that — and adapts automatically when
+        # 26.0 and 26.2 both ship with Xcode 26.3) and xcodebuild treats
+        # each `(name, OS, arch)` triple as a distinct destination — so
+        # even pinning by UDID still ambiguates between arm64 and x86_64.
+        # Resolving a specific UDID at runtime + adding `arch=arm64` to
+        # the destination string silences the "multiple matching
+        # destinations" warning entirely and adapts automatically when
         # the runner image updates its iOS SDK.
         id: simulator
         run: |
@@ -101,7 +101,7 @@ jobs:
           set -o pipefail
           xcodebuild test \
             -scheme Glassware \
-            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
+            -destination "platform=iOS Simulator,arch=arm64,id=${{ steps.simulator.outputs.udid }}" \
             -only-testing:GlasswareTests \
             -only-testing:GlasswareSnapshotTests \
             -enableCodeCoverage NO \
