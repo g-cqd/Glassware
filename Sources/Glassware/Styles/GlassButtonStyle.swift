@@ -46,12 +46,15 @@ public struct GlassButtonStyle: ButtonStyle {
     @Environment(\.glassDensity) private var density
     @Environment(\.glassSizeContext) private var sizeContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.glassForcedVisualStyle) private var forcedVisualStyle
     @Environment(\.glassContainerContext) private var containerContext
 
-    /// The effective visual style, accounting for any forced override.
+    /// The effective visual style, accounting for a vertical-edge override.
+    /// Buttons inside a leading/trailing toolbar container are constrained
+    /// to icon-only regardless of their declared style so the strip stays
+    /// narrow. The wrapping container publishes the edge via
+    /// `glassContainerContext`.
     private var effectiveVisualStyle: GlassVisualStyle {
-        forcedVisualStyle ?? visualStyle
+        containerContext.isVerticalEdge ? .iconOnly() : visualStyle
     }
 
     /// Base container dimensions — deliberately NOT `@ScaledMetric`.
@@ -246,12 +249,15 @@ public struct GlassProminentButtonStyle: ButtonStyle {
     @Environment(\.glassDensity) private var density
     @Environment(\.glassSizeContext) private var sizeContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.glassForcedVisualStyle) private var forcedVisualStyle
     @Environment(\.glassContainerContext) private var containerContext
 
-    /// The effective visual style, accounting for any forced override.
+    /// The effective visual style, accounting for a vertical-edge override.
+    /// Buttons inside a leading/trailing toolbar container are constrained
+    /// to icon-only regardless of their declared style so the strip stays
+    /// narrow. The wrapping container publishes the edge via
+    /// `glassContainerContext`.
     private var effectiveVisualStyle: GlassVisualStyle {
-        forcedVisualStyle ?? visualStyle
+        containerContext.isVerticalEdge ? .iconOnly() : visualStyle
     }
 
     /// Base container dimensions — deliberately NOT `@ScaledMetric`.

@@ -296,13 +296,27 @@ public struct GlassMetrics: Sendable {
     /// Optional edge context for adaptive sizing.
     public let context: GlassEdgeContext?
 
-    /// Creates metrics with density only (legacy behavior).
+    /// Creates metrics with density only.
+    ///
+    /// Without an edge context, `effectiveContainerHeight`,
+    /// `effectiveComponentPadding`, and `effectiveContainerPadding` fall back
+    /// to the density-derived values — they do *not* match Apple's native
+    /// navigation/tab bar heights. Use the context-aware initializer when
+    /// rendering inside an `EdgeGlassContainer` so children match the
+    /// platform's 44pt top / 62pt bottom / 48pt accessory patterns.
     public init(density: GlassDensity) {
         self.density = density
         self.context = nil
     }
 
     /// Creates metrics with density and edge context for adaptive sizing.
+    ///
+    /// - Parameters:
+    ///   - density: Sizing density. Determines tap targets, padding, and
+    ///     spacing.
+    ///   - context: Edge / accessory / collapse context. When non-nil, the
+    ///     `effective*` accessors return platform-matched values. When `nil`,
+    ///     they fall back to the legacy density-only path.
     public init(density: GlassDensity, context: GlassEdgeContext?) {
         self.density = density
         self.context = context

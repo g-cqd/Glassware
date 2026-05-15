@@ -56,6 +56,15 @@ public enum GlassTokens: Sendable {
         /// Shadow radius for the small, delicate shadow.
         /// "Small" - tight and subtle.
         public static let shadowRadius: CGFloat = 2
+
+        /// Visible gap between the selection thumb and the surrounding glass
+        /// container's inner edge when the picker is nested inside a
+        /// `GlassContainer`. The thumb expands to fill the container's inner
+        /// dimensions minus this inset, so its corner radius parallels the
+        /// outer glass capsule regardless of cell aspect ratio (large
+        /// Dynamic Type otherwise inverts the cell from wider-than-tall to
+        /// taller-than-wide and flips a plain `Capsule()`'s curve 90°).
+        public static let outerInset: CGFloat = 2
     }
 
     // MARK: - Shadow Values

@@ -43,10 +43,6 @@ extension EnvironmentValues {
     /// Controls how containers distribute space when compartments are empty.
     @Entry public var glassLayoutDistribution: GlassLayoutDistribution = .natural
 
-    /// Forced visual style override for glass items.
-    /// When set, buttons use this style instead of their configured style.
-    @Entry var glassForcedVisualStyle: GlassVisualStyle? = nil
-
     /// The edge of the screen where the glass bar is positioned.
     /// Set by the container for child components to adapt their layout.
     @Entry public var glassEdge: GlassEdge = .bottom
@@ -75,12 +71,36 @@ public struct GlassContainerContext: Sendable, Equatable {
     /// Whether this container is on a vertical edge (leading/trailing).
     public let isVerticalEdge: Bool
 
-    /// Default context for standalone usage.
-    public static let `default` = GlassContainerContext(itemCount: 1, isVerticalEdge: false)
+    /// Padding the surrounding glass container applies between its glass edge and
+    /// the content. Lets children outset themselves to span the full container's
+    /// inner dimension (e.g. SegmentedPicker's selection thumb hugging the glass).
+    /// Zero when the consumer is used standalone, outside a GlassContainer.
+    public let containerInset: CGFloat
 
-    public init(itemCount: Int, isVerticalEdge: Bool) {
+    /// Default context for standalone usage.
+    public static let `default` = GlassContainerContext(
+        itemCount: 1,
+        isVerticalEdge: false,
+        containerInset: 0
+    )
+
+    /// Creates a container context.
+    ///
+    /// - Parameters:
+    ///   - itemCount: Number of items in the surrounding glass container.
+    ///     Controls shape selection (1 = circle, 2+ = capsule on horizontal
+    ///     edges).
+    ///   - isVerticalEdge: `true` when the surrounding container is on a
+    ///     leading/trailing edge. Triggers icon-only style fallback for
+    ///     buttons that would otherwise render with labels.
+    ///   - containerInset: Padding the surrounding container puts between its
+    ///     glass edge and content. Children read this to outset themselves to
+    ///     the container's inner dimension when needed. Defaults to 0 for
+    ///     standalone (non-nested) use.
+    public init(itemCount: Int, isVerticalEdge: Bool, containerInset: CGFloat = 0) {
         self.itemCount = itemCount
         self.isVerticalEdge = isVerticalEdge
+        self.containerInset = containerInset
     }
 
     /// Whether the container has a single item.
@@ -121,6 +141,13 @@ public struct GlassHeightReport: Sendable, Equatable {
     /// Default empty report.
     public static let empty = GlassHeightReport()
 
+    /// Creates a height report.
+    ///
+    /// Pass `nil` for any edge that has no toolbar — consumers use the
+    /// optional-ness to decide whether to apply safe-area padding for that
+    /// edge. Aggregated across nested `EdgeGlassContainer`s via a SwiftUI
+    /// `PreferenceKey` reduction; `init` here is for tests and manual
+    /// composition only.
     public init(
         bottom: CGFloat? = nil,
         top: CGFloat? = nil,

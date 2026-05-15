@@ -323,7 +323,11 @@ struct GlassContainer: View {
         @ViewBuilder _ content: () -> Content
     ) -> some View {
         let isSingleItem = itemCount == 1 && (placement == .leading || placement == .trailing)
-        let context = GlassContainerContext(itemCount: itemCount, isVerticalEdge: edge.isVertical)
+        let context = GlassContainerContext(
+            itemCount: itemCount,
+            isVerticalEdge: edge.isVertical,
+            containerInset: metrics.effectiveContainerPadding
+        )
         let builtContent = content()
 
         if isSingleItem && edge.isHorizontal {
@@ -355,11 +359,12 @@ struct GlassContainer: View {
             )
             .glassEffect(glass.interactive(), in: .circle)
         } else if edge.isVertical {
-            // Vertical edge: all items constrained to icon size for consistency
+            // Vertical edge: button styles read `containerContext.isVerticalEdge`
+            // off the context we just constructed and force their layout to
+            // icon-only locally. No env value plumbing needed.
             let shape: AnyShape = isSingleItem ? AnyShape(.circle) : AnyShape(.capsule)
             NamespacedContainer(placement: placement, context: context) {
                 builtContent
-                    .environment(\.glassForcedVisualStyle, .iconOnly())
             }
             .padding(metrics.effectiveContainerPadding)
             .glassEffect(glass.interactive(), in: shape)

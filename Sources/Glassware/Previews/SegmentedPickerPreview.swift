@@ -505,3 +505,161 @@ private struct VerticalStyleComparisonView: View {
     }
 }
 
+// MARK: - Dynamic Type Edge Hug Stress Test
+
+/// Renders the picker inside a toolbar at every Dynamic Type step so the thumb
+/// can be visually verified to parallel the outer glass capsule's edge across
+/// the entire range. The previous `Capsule()`-based thumb worked at small text
+/// but flipped its curvature 90° once cells became taller than they were wide
+/// (large text + `titleAndIcon`), and the gap to the outer glass edge lost its
+/// uniformity. The new RoundedRectangle thumb stays parallel to the container.
+private struct DynamicTypeEdgeHugPreview: View {
+    @State private var selected: PickerTab = .home
+    let typeSize: DynamicTypeSize
+    let style: SegmentedPickerStyle
+
+    var body: some View {
+        SampleContentView("Dynamic Type \(label)", color: .indigo.opacity(0.05))
+            .glassBar {
+                SegmentedPicker(selection: $selected, style: style) {
+                    ForEach(PickerTab.allCases.prefix(3), id: \.rawValue) { tab in
+                        SegmentedPickerItem(
+                            tab,
+                            systemImage: tab.systemImage,
+                            style: style,
+                            isSelected: selected == tab
+                        ) {
+                            Text(tab.title)
+                        }
+                    }
+                }
+                .segmentedPickerStyle(sizing: .evenFill)
+            }
+            .dynamicTypeSize(typeSize)
+    }
+
+    private var label: String {
+        switch typeSize {
+        case .xSmall: "xSmall"
+        case .small: "small"
+        case .medium: "medium"
+        case .large: "large"
+        case .xLarge: "xLarge"
+        case .xxLarge: "xxLarge"
+        case .xxxLarge: "xxxLarge"
+        case .accessibility1: "A1"
+        case .accessibility2: "A2"
+        case .accessibility3: "A3"
+        case .accessibility4: "A4"
+        case .accessibility5: "A5"
+        @unknown default: "?"
+        }
+    }
+}
+
+#Preview("DT xSmall - titleAndIcon") {
+    DynamicTypeEdgeHugPreview(typeSize: .xSmall, style: .titleAndIcon)
+}
+
+#Preview("DT large - titleAndIcon") {
+    DynamicTypeEdgeHugPreview(typeSize: .large, style: .titleAndIcon)
+}
+
+#Preview("DT accessibility1 - titleAndIcon") {
+    DynamicTypeEdgeHugPreview(typeSize: .accessibility1, style: .titleAndIcon)
+}
+
+#Preview("DT accessibility1 - titleOnly") {
+    DynamicTypeEdgeHugPreview(typeSize: .accessibility1, style: .titleOnly)
+}
+
+#Preview("DT accessibility1 - iconOnly") {
+    DynamicTypeEdgeHugPreview(typeSize: .accessibility1, style: .iconOnly)
+}
+
+// MARK: - Haptics Demo
+
+/// Demonstrates how to override or disable Glassware haptics. The actual
+/// vibrations only fire on physical iOS devices — the Simulator silently
+/// no-ops `SensoryFeedback`, so verification requires hardware.
+private struct HapticsDemoView: View {
+    @State private var defaultSelection: PickerTab = .home
+    @State private var silentSelection: PickerTab = .home
+    @State private var customSelection: PickerTab = .home
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                PreviewSection(title: "Default vocabulary") {
+                    SegmentedPicker(selection: $defaultSelection, style: .titleAndIcon) {
+                        ForEach(PickerTab.allCases, id: \.rawValue) { tab in
+                            SegmentedPickerItem(
+                                tab,
+                                systemImage: tab.systemImage,
+                                style: .titleAndIcon,
+                                isSelected: defaultSelection == tab
+                            ) { Text(tab.title) }
+                        }
+                    }
+                    .padding(3)
+
+                    Text("Drag across cells: a selection tick fires at each detent. Push past the first or last cell: a heavier boundary impact fires once per push.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                PreviewSection(title: "Silenced via .glasswareHaptics(.disabled)") {
+                    SegmentedPicker(selection: $silentSelection, style: .titleAndIcon) {
+                        ForEach(PickerTab.allCases, id: \.rawValue) { tab in
+                            SegmentedPickerItem(
+                                tab,
+                                systemImage: tab.systemImage,
+                                style: .titleAndIcon,
+                                isSelected: silentSelection == tab
+                            ) { Text(tab.title) }
+                        }
+                    }
+                    .padding(3)
+                    .glasswareHaptics(.disabled)
+
+                    Text("Same control, completely silent.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                PreviewSection(title: "Custom: heavier detents, no boundary") {
+                    SegmentedPicker(selection: $customSelection, style: .titleAndIcon) {
+                        ForEach(PickerTab.allCases, id: \.rawValue) { tab in
+                            SegmentedPickerItem(
+                                tab,
+                                systemImage: tab.systemImage,
+                                style: .titleAndIcon,
+                                isSelected: customSelection == tab
+                            ) { Text(tab.title) }
+                        }
+                    }
+                    .padding(3)
+                    .glasswareHaptics(.init(
+                        selectionChange: .impact(weight: .medium, intensity: 0.8),
+                        boundaryReached: nil
+                    ))
+
+                    Text("Beefier per-detent feel; silence at the rails.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text("Haptics fire on device only — Simulator no-ops them.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.top)
+            }
+            .padding()
+        }
+    }
+}
+
+#Preview("Haptics Demo (device only)") {
+    HapticsDemoView()
+}
+

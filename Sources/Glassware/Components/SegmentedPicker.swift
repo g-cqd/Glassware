@@ -124,6 +124,10 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
     @State private var cellFrames: [Int: CGRect] = [:]
     @State private var dragOffset: CGFloat = 0
     @State private var isDragging = false
+    @State private var hapticTick: Int = 0
+    @State private var boundaryTick: Int = 0
+    @State private var liveSnapIndex: Int?
+    @State private var wasAtBoundary: Bool = false
 
     @Environment(\.glassDensity) private var density
     @Environment(\.glassSizeContext) private var sizeContext
@@ -171,10 +175,15 @@ public struct SegmentedPicker<Value: Hashable, Content: View>: View {
             cellFrames: $cellFrames,
             dragOffset: $dragOffset,
             isDragging: $isDragging,
+            hapticTick: $hapticTick,
+            boundaryTick: $boundaryTick,
+            liveSnapIndex: $liveSnapIndex,
+            wasAtBoundary: $wasAtBoundary,
             reduceMotion: reduceMotion,
             metrics: metrics,
             spacing: spacing,
-            sizing: sizing
+            sizing: sizing,
+            containerInset: containerContext.containerInset
         )) {
             content()
         }
@@ -191,10 +200,15 @@ private struct SegmentedPickerRoot<Value: Hashable>: _VariadicView.UnaryViewRoot
     @Binding var cellFrames: [Int: CGRect]
     @Binding var dragOffset: CGFloat
     @Binding var isDragging: Bool
+    @Binding var hapticTick: Int
+    @Binding var boundaryTick: Int
+    @Binding var liveSnapIndex: Int?
+    @Binding var wasAtBoundary: Bool
     let reduceMotion: Bool
     let metrics: GlassMetrics
     let spacing: CGFloat
     let sizing: SegmentedPickerSizing
+    let containerInset: CGFloat
 
     @MainActor
     func body(children: _VariadicView.Children) -> some View {
@@ -205,10 +219,15 @@ private struct SegmentedPickerRoot<Value: Hashable>: _VariadicView.UnaryViewRoot
             cellFrames: $cellFrames,
             dragOffset: $dragOffset,
             isDragging: $isDragging,
+            hapticTick: $hapticTick,
+            boundaryTick: $boundaryTick,
+            liveSnapIndex: $liveSnapIndex,
+            wasAtBoundary: $wasAtBoundary,
             reduceMotion: reduceMotion,
             metrics: metrics,
             spacing: spacing,
             sizing: sizing,
+            containerInset: containerInset,
             children: children
         )
     }
@@ -222,10 +241,27 @@ private struct SegmentedPickerAxisLayout: Layout {
     let sizing: SegmentedPickerSizing
     let spacing: CGFloat
 
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    /// Per-layout cache. SwiftUI calls `sizeThatFits` once and `placeSubviews`
+    /// once per pass, both of which need the children's ideal sizes. Caching
+    /// here avoids a second `subviews.map { $0.sizeThatFits(.unspecified) }`
+    /// pass on every layout — cheap individually, but the picker re-lays out
+    /// on every `dragOffset` tick and every Dynamic Type re-measure.
+    struct Cache {
+        var idealSizes: [CGSize]
+    }
+
+    func makeCache(subviews: Subviews) -> Cache {
+        Cache(idealSizes: subviews.map { $0.sizeThatFits(.unspecified) })
+    }
+
+    func updateCache(_ cache: inout Cache, subviews: Subviews) {
+        cache.idealSizes = subviews.map { $0.sizeThatFits(.unspecified) }
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) -> CGSize {
         guard !subviews.isEmpty else { return .zero }
 
-        let idealSizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let idealSizes = cache.idealSizes
         let totalSpacing = spacing * CGFloat(max(0, subviews.count - 1))
 
         if axis == .horizontal {
@@ -269,11 +305,11 @@ private struct SegmentedPickerAxisLayout: Layout {
         }
     }
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) {
         guard !subviews.isEmpty else { return }
 
         let count = subviews.count
-        let idealSizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let idealSizes = cache.idealSizes
         let totalSpacing = spacing * CGFloat(max(0, count - 1))
 
         if axis == .horizontal {
@@ -397,10 +433,15 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
     @Binding var cellFrames: [Int: CGRect]
     @Binding var dragOffset: CGFloat
     @Binding var isDragging: Bool
+    @Binding var hapticTick: Int
+    @Binding var boundaryTick: Int
+    @Binding var liveSnapIndex: Int?
+    @Binding var wasAtBoundary: Bool
     let reduceMotion: Bool
     let metrics: GlassMetrics
     let spacing: CGFloat
     let sizing: SegmentedPickerSizing
+    let containerInset: CGFloat
     let children: _VariadicView.Children
 
     private var layout: SegmentedPickerAxisLayout {
@@ -424,6 +465,13 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
     }
 
     /// Drag bounds based on item positions.
+    ///
+    /// In RTL layouts, the "first" child's minX is *greater* than the "last"
+    /// child's because SwiftUI mirrors the coordinate space — so we wrap the
+    /// pair in `min(...)...max(...)` to keep the range well-formed regardless
+    /// of layout direction. The previous form crashed during the first layout
+    /// pass under `layoutDirection == .rightToLeft` with
+    /// "Range requires lowerBound <= upperBound".
     private var dragBounds: ClosedRange<CGFloat> {
         guard let selectedFrame, !children.isEmpty,
               let firstFrame = cellFrames[0],
@@ -431,15 +479,16 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
             return 0...0
         }
 
+        let a: CGFloat
+        let b: CGFloat
         if axis == .horizontal {
-            let minOffset = firstFrame.minX - selectedFrame.minX
-            let maxOffset = lastFrame.minX - selectedFrame.minX
-            return minOffset...maxOffset
+            a = firstFrame.minX - selectedFrame.minX
+            b = lastFrame.minX - selectedFrame.minX
         } else {
-            let minOffset = firstFrame.minY - selectedFrame.minY
-            let maxOffset = lastFrame.minY - selectedFrame.minY
-            return minOffset...maxOffset
+            a = firstFrame.minY - selectedFrame.minY
+            b = lastFrame.minY - selectedFrame.minY
         }
+        return Swift.min(a, b)...Swift.max(a, b)
     }
 
     /// Whether the thumb uses a circle shape.
@@ -448,20 +497,54 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
         style == .iconOnly && !sizing.fills
     }
 
-    /// Offset for the thumb position.
+    /// How much to extend the thumb beyond the picker's natural bounds, on the
+    /// axis perpendicular to the picker's main axis, so the thumb spans the
+    /// surrounding glass container's *inner* dimension minus a small visible
+    /// inset. Zero when used standalone (no enclosing GlassContainer).
+    private var thumbOutset: CGFloat {
+        max(0, containerInset - GlassTokens.SelectionThumb.outerInset)
+    }
+
+    /// Corner radius for the thumb. Derived from the outer glass container's
+    /// inner curvature so the thumb's curve always parallels the container's,
+    /// regardless of whether individual cells are wider or taller than the
+    /// picker (which flips a plain `Capsule()`'s rounded ends 90° at large
+    /// Dynamic Type). Capped at `min(w,h)/2` so narrow cells degrade to a
+    /// pill rather than over-rounding.
+    private func thumbCornerRadius(for size: CGSize) -> CGFloat {
+        guard let frame = selectedFrame else { return 0 }
+        let outerExtent: CGFloat
+        if axis == .horizontal {
+            outerExtent = frame.height + 2 * containerInset
+        } else {
+            outerExtent = frame.width + 2 * containerInset
+        }
+        let desired = outerExtent / 2 - GlassTokens.SelectionThumb.outerInset
+        let cap = min(size.width, size.height) / 2
+        return max(0, min(desired, cap))
+    }
+
+    /// Offset for the thumb position. Includes the outset so the thumb extends
+    /// into the glass container's padding region on the orthogonal axis.
     private var thumbOffset: CGSize {
         guard let frame = selectedFrame else { return .zero }
         let clampedOffset = dragOffset.clamped(to: dragBounds)
         if axis == .horizontal {
-            return CGSize(width: frame.minX + clampedOffset, height: frame.minY)
+            return CGSize(width: frame.minX + clampedOffset, height: frame.minY - thumbOutset)
         } else {
-            return CGSize(width: frame.minX, height: frame.minY + clampedOffset)
+            return CGSize(width: frame.minX - thumbOutset, height: frame.minY + clampedOffset)
         }
     }
 
-    /// Size of the thumb (from selected cell frame).
+    /// Size of the thumb. Cell size on the main axis, cell size + 2 × outset
+    /// on the orthogonal axis (so the thumb fills the container's inner side).
     private var thumbSize: CGSize {
-        selectedFrame?.size ?? .zero
+        guard let frame = selectedFrame else { return .zero }
+        if axis == .horizontal {
+            return CGSize(width: frame.width, height: frame.height + 2 * thumbOutset)
+        } else {
+            return CGSize(width: frame.width + 2 * thumbOutset, height: frame.height)
+        }
     }
 
     var body: some View {
@@ -482,6 +565,8 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
             .overlay(alignment: .topLeading) { invisibleDraggableRegion }
             .animation(selectionAnimation, value: selectedIndex)
             .animation(selectionAnimation, value: dragOffset)
+            .emitGlassHaptic(.selectionChange, trigger: hapticTick)
+            .emitGlassHaptic(.boundaryReached, trigger: boundaryTick)
             .accessibilityElement(children: .combine)
             .accessibilityAdjustableAction { direction in
                 adjustSelection(direction: direction)
@@ -537,17 +622,23 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
     
     @ViewBuilder
     private var thumbLayer: some View {
+        let size = thumbSize
         if usesCircleShape {
-            SelectionThumb(shape: .circle)
-                .frame(width: thumbSize.width, height: thumbSize.height)
+            SelectionThumb(shape: Circle())
+                .frame(width: size.width, height: size.height)
                 .offset(thumbOffset)
         } else {
-            SelectionThumb(shape: .capsule)
-                .frame(width: thumbSize.width, height: thumbSize.height)
-                .offset(thumbOffset)
+            SelectionThumb(
+                shape: RoundedRectangle(
+                    cornerRadius: thumbCornerRadius(for: size),
+                    style: .continuous
+                )
+            )
+            .frame(width: size.width, height: size.height)
+            .offset(thumbOffset)
         }
     }
-    
+
     private var maskedLayer: some View {
         // Primary styled content, masked by thumb shape
         layout {
@@ -557,14 +648,18 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
         }
         .allowsHitTesting(false)
         .mask(alignment: .topLeading) {
+            let size = thumbSize
             Group {
                 if usesCircleShape {
                     Circle()
                 } else {
-                    Capsule()
+                    RoundedRectangle(
+                        cornerRadius: thumbCornerRadius(for: size),
+                        style: .continuous
+                    )
                 }
             }
-            .frame(width: thumbSize.width, height: thumbSize.height)
+            .frame(width: size.width, height: size.height)
             .offset(thumbOffset)
         }
     }
@@ -576,7 +671,8 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
                 sizedChild(child.hidden())
                     .contentShape(.rect)
                     .onTapGesture {
-                        if let value: Value = child.extractTag() {
+                        if let value: Value = child.extractTag(), value != selection {
+                            hapticTick &+= 1
                             selection = value
                         }
                     }
@@ -610,15 +706,22 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
             let nextIndex = currentIndex + 1
             if nextIndex < children.count {
                 if let value: Value = children[nextIndex].extractTag() {
+                    hapticTick &+= 1
                     selection = value
                 }
+            } else {
+                // VoiceOver user pushed past the end — surface as a boundary cue.
+                boundaryTick &+= 1
             }
         case .decrement:
             let prevIndex = currentIndex - 1
             if prevIndex >= 0 {
                 if let value: Value = children[prevIndex].extractTag() {
+                    hapticTick &+= 1
                     selection = value
                 }
+            } else {
+                boundaryTick &+= 1
             }
         @unknown default:
             break
@@ -627,19 +730,70 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
 
     // MARK: - Drag Gesture
 
+    /// Picks the closest cell to `position` on the main axis. Used to compute
+    /// both live drag ticks and the final drag-end snap.
+    private func nearestIndex(toPosition position: CGFloat) -> Int? {
+        var closestIndex: Int?
+        var closestDistance: CGFloat = .infinity
+        for i in 0..<children.count {
+            guard let frame = cellFrames[i] else { continue }
+            let itemCenter = axis == .horizontal ? frame.midX : frame.midY
+            let distance = abs(itemCenter - position)
+            if distance < closestDistance {
+                closestDistance = distance
+                closestIndex = i
+            }
+        }
+        return closestIndex
+    }
+
     private var dragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
                 isDragging = true
                 let translation = axis == .horizontal ? value.translation.width : value.translation.height
-                dragOffset = translation.clamped(to: dragBounds)
+                let clamped = translation.clamped(to: dragBounds)
+                dragOffset = clamped
+
+                // Boundary detection: fire one haptic when the user first
+                // pushes past either end; reset when they ease off so a second
+                // sustained push still registers.
+                let atBoundary = translation < dragBounds.lowerBound || translation > dragBounds.upperBound
+                if atBoundary, !wasAtBoundary {
+                    boundaryTick &+= 1
+                }
+                wasAtBoundary = atBoundary
+
+                // Live detent tick: each time the thumb crosses the midpoint
+                // of a new cell, fire a selection haptic. Mirrors Apple's
+                // Digital Crown / Camera Control feel.
+                if let currentFrame = selectedFrame {
+                    let thumbCenter: CGFloat
+                    if axis == .horizontal {
+                        thumbCenter = currentFrame.midX + clamped
+                    } else {
+                        thumbCenter = currentFrame.midY + clamped
+                    }
+                    let nearest = nearestIndex(toPosition: thumbCenter)
+                    if nearest != liveSnapIndex {
+                        if liveSnapIndex != nil, nearest != nil {
+                            // Suppress the very first assignment of the drag —
+                            // the user hasn't crossed a detent yet, they're
+                            // still on the starting cell.
+                            hapticTick &+= 1
+                        }
+                        liveSnapIndex = nearest
+                    }
+                }
             }
             .onEnded { value in
-                guard let currentFrame = selectedFrame else {
+                defer {
                     isDragging = false
                     dragOffset = 0
-                    return
+                    wasAtBoundary = false
+                    liveSnapIndex = nil
                 }
+                guard let currentFrame = selectedFrame else { return }
 
                 let translation = axis == .horizontal ? value.translation.width : value.translation.height
                 let clampedTranslation = translation.clamped(to: dragBounds)
@@ -650,32 +804,37 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
                     endPosition = currentFrame.midY + clampedTranslation
                 }
 
-                // Find the closest item by center position
-                var closestIndex: Int?
-                var closestDistance: CGFloat = .infinity
-
-                for i in 0..<children.count {
-                    guard let frame = cellFrames[i] else { continue }
-                    let itemCenter = axis == .horizontal ? frame.midX : frame.midY
-                    let distance = abs(itemCenter - endPosition)
-                    if distance < closestDistance {
-                        closestDistance = distance
-                        closestIndex = i
-                    }
-                }
-
-                isDragging = false
-                dragOffset = 0
-
-                if let index = closestIndex,
-                   let value: Value = children[index].extractTag() {
-                    selection = value
-                }
+                guard let index = nearestIndex(toPosition: endPosition),
+                      let value: Value = children[index].extractTag() else { return }
+                // Don't bump hapticTick here: each detent crossing already
+                // fired during `.onChanged`, so committing onto the same cell
+                // shouldn't double-tap.
+                selection = value
             }
     }
 }
 
-// MARK: - Tag Extraction
+// MARK: - PRIVATE API DEPENDENCY: Tag Extraction
+//
+// SegmentedPicker reads child tag values through `Mirror` reflection on the
+// internal layout of `_VariadicView.Children`. Both `_VariadicView` and the
+// "traits → storage → value → tagged" path are private SwiftUI surface and
+// can change between Xcode releases without warning.
+//
+// Surveillance plan:
+//   1. The SegmentedPicker snapshot tests (Tests/GlasswareSnapshotTests/
+//      SegmentedPickerSnapshotTests.swift) render real pickers — if Mirror
+//      extraction starts returning nil, `extractTag()` trips
+//      `assertionFailure` in debug, crashing the snapshot job and surfacing
+//      the regression on the first CI run against a new Xcode beta.
+//   2. The logged error string contains "SwiftUI _VariadicView internal
+//      layout may have changed" verbatim so it's grep-able in CI logs.
+//
+// If this path breaks and a fix isn't immediately available, the fallback
+// is to switch the picker's content API from a variadic-view builder to an
+// explicit `data: collection` form (à la `ForEach`), which uses no
+// reflection. That's a public-API change and should be planned, not
+// reactively shipped.
 
 extension View {
     /// Extracts the tag value from a variadic view child using reflection.
