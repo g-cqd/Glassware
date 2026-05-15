@@ -15,7 +15,7 @@ private let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/Aemi-Studio/AemiSDR.git", revision: "0fa9c72f95e0be3859bc6ff8129f0f58ccc6dfda")
+        .package(url: "https://github.com/Aemi-Studio/AemiSDR.git", revision: "691d1a2")
     ],
     targets: [
         .target(

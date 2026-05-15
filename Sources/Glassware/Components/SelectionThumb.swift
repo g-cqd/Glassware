@@ -31,10 +31,10 @@ public struct SelectionThumb<S: Shape>: View {
         shape
             .fill(.clear)
             .background {
-                VisualEffectView(
+                BackdropBlurView(
                     colorTint: Color.primary,
                     colorTintAlpha: GlassTokens.SelectionThumb.fillOpacity,
-                    blurRadius: 10,
+                    blurRadius: 10
                 ).clipShape(shape)
             }
             .overlay {
