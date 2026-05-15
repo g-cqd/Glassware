@@ -42,6 +42,15 @@ struct EdgeSafeAreaModifier: ViewModifier {
         paddingConfig.resolvedAdditionalPadding(density: density)
     }
 
+    /// Minimum inset required to clear the device rounded-corner curve on
+    /// `.top` / `.bottom` edges. In landscape iPhone the system reports a
+    /// top safe-area inset of 0pt, so `safeAreaPadding(.top, 0)` (the
+    /// `.tight` configuration) lets the bar render under the corner
+    /// radius. Apple's HIG corner-clearance recommendation is ~8pt; we
+    /// enforce that as a floor independent of the user-declared
+    /// additional padding.
+    private static let cornerClearance: CGFloat = 8
+
     func body(content: Content) -> some View {
         switch edge {
         case .bottom:
@@ -61,11 +70,14 @@ struct EdgeSafeAreaModifier: ViewModifier {
                 // clipped under the corner radius). `safeAreaPadding` stacks
                 // with the system inset rather than replacing it, so the
                 // declared `externalPadding` is added on top of whatever the
-                // device demands.
+                // device demands. `max(additionalPadding, cornerClearance)`
+                // enforces a minimum ~8pt visual gap from the device's
+                // rounded-corner curve even when the caller explicitly
+                // asked for zero additional padding via `.tight`.
                 content
                     .safeAreaPadding(.horizontal, externalPadding)
                     .ignoresSafeArea(.all, edges: .bottom)
-                    .safeAreaPadding(.bottom, additionalPadding)
+                    .safeAreaPadding(.bottom, max(additionalPadding, Self.cornerClearance))
             }
 
         case .top:
@@ -73,10 +85,13 @@ struct EdgeSafeAreaModifier: ViewModifier {
             // horizontal safe area. Same rationale as `.bottom` above —
             // landscape capture showed Glass top-trailing buttons partially
             // clipped under the device corner radius when we ignored the
-            // horizontal container inset.
+            // horizontal container inset and used a zero additional
+            // padding. The `max(_, cornerClearance)` guarantees the bar
+            // keeps ~8pt off the curve in landscape (where the system top
+            // safe-area inset is 0).
             content
                 .safeAreaPadding(.horizontal, externalPadding)
-                .safeAreaPadding(.top, additionalPadding)
+                .safeAreaPadding(.top, max(additionalPadding, Self.cornerClearance))
 
         case .leading:
             // Leading: Use regular padding for consistent spacing from edge

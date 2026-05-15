@@ -327,9 +327,22 @@ struct GlassContainer: View {
         let builtContent = content()
 
         if isSingleItem && edge.isHorizontal {
-            // Circular container for single items on horizontal edges
+            // Circular container for single items on horizontal edges.
+            //
+            // Circle inscribes a square of side ≈ 0.707·D. An icon glyph
+            // (`Image(systemName:)`) is square-bounding-boxed, so without
+            // extra padding the icon's corners can clip against the
+            // circle perimeter — and worse, the press-state lens refraction
+            // from `glass.interactive()` amplifies that visible clip
+            // (reported 2026-05-15, the bottom-right of a 4-grid glyph
+            // appeared squashed when tapped).
+            //
+            // The base `effectiveContainerPadding` is purely a glass-effect
+            // breathing margin (3-6pt by density). We bolt on an additional
+            // ~6pt for the circular case so the inscribed square has room
+            // for the icon's diagonal corners + a small refraction guard.
             NamespacedContainer(placement: placement, context: context) { builtContent }
-                .padding(metrics.effectiveContainerPadding)
+                .padding(metrics.effectiveContainerPadding + 6)
                 .frame(
                     minWidth: edge.isVertical ? crossAxisSize : nil,
                     minHeight: edge.isHorizontal ? crossAxisSize : nil
