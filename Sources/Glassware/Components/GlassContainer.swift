@@ -37,6 +37,7 @@ struct GlassContainer: View {
     @Environment(\.glassSizeContext) private var sizeContext
     @Environment(\.glassPaddingConfiguration) private var paddingConfig
     @Environment(\.glassLayoutDistribution) private var distribution
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     // MARK: - Properties
 
@@ -84,10 +85,25 @@ struct GlassContainer: View {
             for: CGFloat.self,
             of: { edge.isHorizontal ? $0.size.height : $0.size.width },
             action: { newSize in
-                guard abs((crossAxisSize ?? 0) - newSize) > 1 else { return }
+                // 0.5pt threshold (sub-point fractions accumulate when Dynamic
+                // Type shrinks back and SwiftUI lays out at intermediate
+                // sizes mid-animation). The previous 1pt threshold could
+                // miss small shrinks during the down-stroke of a DT change,
+                // leaving the cached `crossAxisSize` stuck at the previous
+                // larger value — visible to users as "components keep their
+                // bigger size when going back to normal font size" (reported
+                // 2026-05-15).
+                guard abs((crossAxisSize ?? 0) - newSize) > 0.5 else { return }
                 crossAxisSize = newSize
             }
         )
+        // Clear the cached size whenever Dynamic Type changes so the next
+        // geometry pass measures fresh. Defends against the case where the
+        // measured delta on the down-stroke is exactly equal to (or smaller
+        // than) the threshold.
+        .onChange(of: dynamicTypeSize) {
+            crossAxisSize = nil
+        }
         .modifier(
             EdgeSafeAreaModifier(
                 edge: edge,

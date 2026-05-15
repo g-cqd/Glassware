@@ -52,22 +52,30 @@ struct EdgeSafeAreaModifier: ViewModifier {
                     .padding(.bottom, additionalPadding)
                     .ignoresSafeArea(.all, edges: .bottom)
             } else {
-                // Respect safe area: Content padded above home indicator
-                // Use regular .padding for horizontal to avoid stacking with device safe area
-                // in landscape mode. The glass containers extend into the safe area naturally.
+                // Respect safe area: bar sits inside the home-indicator inset
+                // AND inside the horizontal safe area. In landscape on devices
+                // with Dynamic Island / rounded corners the horizontal inset
+                // can exceed `externalPadding`; without honouring it the bar
+                // items render under those system regions (reported
+                // 2026-05-15, landscape capture, Glass top-trailing button
+                // clipped under the corner radius). `safeAreaPadding` stacks
+                // with the system inset rather than replacing it, so the
+                // declared `externalPadding` is added on top of whatever the
+                // device demands.
                 content
-                    .padding(.horizontal, externalPadding)
-                    .ignoresSafeArea(.container, edges: .horizontal)
+                    .safeAreaPadding(.horizontal, externalPadding)
                     .ignoresSafeArea(.all, edges: .bottom)
                     .safeAreaPadding(.bottom, additionalPadding)
             }
 
         case .top:
-            // Top: Content below notch/Dynamic Island with padding
-            // Use regular .padding for horizontal to avoid stacking with device safe area
+            // Top: bar sits below the notch / Dynamic Island and inside the
+            // horizontal safe area. Same rationale as `.bottom` above —
+            // landscape capture showed Glass top-trailing buttons partially
+            // clipped under the device corner radius when we ignored the
+            // horizontal container inset.
             content
-                .padding(.horizontal, externalPadding)
-                .ignoresSafeArea(.container, edges: .horizontal)
+                .safeAreaPadding(.horizontal, externalPadding)
                 .safeAreaPadding(.top, additionalPadding)
 
         case .leading:
