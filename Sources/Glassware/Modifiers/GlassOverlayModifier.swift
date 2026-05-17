@@ -271,6 +271,19 @@ private struct EdgeGlassContainer: View {
                     accessoryStack
                 }
         }
+        // Safe-area padding wraps the whole effect container so the inner
+        // `primaryToolbar.size` measured above is the visible bar only — the
+        // accessory's `.center` overlay then aligns with the leading/trailing
+        // centers (otherwise `toolbarSize` would include the bottom
+        // safe-area inset and shift the accessory down at large Dynamic
+        // Type).
+        .modifier(
+            EdgeSafeAreaModifier(
+                edge: edge,
+                paddingConfig: paddingConfig,
+                density: density
+            )
+        )
         .environment(\.glassEdge, edge)
         .preference(key: GlassHeightPreferenceKey.self, value: heightReport)
         .animation(edge == .bottom ? collapseAnimation : nil, value: isCollapsed)

@@ -505,23 +505,13 @@ private struct SegmentedPickerContent<Value: Hashable>: View {
         max(0, containerInset - GlassTokens.SelectionThumb.outerInset)
     }
 
-    /// Corner radius for the thumb. Derived from the outer glass container's
-    /// inner curvature so the thumb's curve always parallels the container's,
-    /// regardless of whether individual cells are wider or taller than the
-    /// picker (which flips a plain `Capsule()`'s rounded ends 90° at large
-    /// Dynamic Type). Capped at `min(w,h)/2` so narrow cells degrade to a
-    /// pill rather than over-rounding.
+    /// Corner radius for the thumb. Returns `min(w, h) / 2` so the thumb is
+    /// always a true capsule on its shorter axis, matching the outer glass
+    /// container's `.capsule` shape regardless of the cell's aspect ratio.
+    /// Using an explicit `RoundedRectangle` (rather than `Capsule()`) still
+    /// lets us animate the radius smoothly across Dynamic Type transitions.
     private func thumbCornerRadius(for size: CGSize) -> CGFloat {
-        guard let frame = selectedFrame else { return 0 }
-        let outerExtent: CGFloat
-        if axis == .horizontal {
-            outerExtent = frame.height + 2 * containerInset
-        } else {
-            outerExtent = frame.width + 2 * containerInset
-        }
-        let desired = outerExtent / 2 - GlassTokens.SelectionThumb.outerInset
-        let cap = min(size.width, size.height) / 2
-        return max(0, min(desired, cap))
+        max(0, min(size.width, size.height) / 2)
     }
 
     /// Offset for the thumb position. Includes the outset so the thumb extends

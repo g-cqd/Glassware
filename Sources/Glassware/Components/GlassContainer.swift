@@ -35,7 +35,6 @@ struct GlassContainer: View {
 
     @Environment(\.glassDensity) private var density
     @Environment(\.glassSizeContext) private var sizeContext
-    @Environment(\.glassPaddingConfiguration) private var paddingConfig
     @Environment(\.glassLayoutDistribution) private var distribution
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -104,13 +103,10 @@ struct GlassContainer: View {
         .onChange(of: dynamicTypeSize) {
             crossAxisSize = nil
         }
-        .modifier(
-            EdgeSafeAreaModifier(
-                edge: edge,
-                paddingConfig: paddingConfig,
-                density: density
-            )
-        )
+        // Safe-area padding is applied by the parent (GlassBarModifier /
+        // EdgeGlassContainer) so the container's measured outer size stays
+        // equal to the visible bar — letting overlaid accessories center on
+        // the bar rather than on the padded box.
     }
 
     private var layout: some Layout {

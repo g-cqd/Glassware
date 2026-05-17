@@ -29,6 +29,7 @@ struct GlassBarModifier: ViewModifier {
     let glass: Glass
 
     @Environment(\.glassDensity) private var density
+    @Environment(\.glassPaddingConfiguration) private var paddingConfig
 
     /// Namespace for glass effect grouping.
     @Namespace private var glassNamespace
@@ -71,6 +72,13 @@ struct GlassBarModifier: ViewModifier {
                         collapseConfig: nil
                     )
                 }
+                .modifier(
+                    EdgeSafeAreaModifier(
+                        edge: edge,
+                        paddingConfig: paddingConfig,
+                        density: density
+                    )
+                )
                 .environment(\.glassEdge, edge)
             }
     }
