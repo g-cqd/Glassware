@@ -15,7 +15,7 @@ private let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/Aemi-Studio/AemiSDR.git", revision: "7438a5dfc79e3d72d027a32be74f689c4e0f8e2e"),
+        .package(url: "https://github.com/Aemi-Studio/AemiSDR.git", revision: "56df4d7335e1eb2334059a7f4c6e0e29003d24f8"),
         // Snapshot testing — pinned exact to keep snapshot baselines stable
         // across dependency-resolver runs. Bump deliberately when intentionally
         // regenerating snapshots.
