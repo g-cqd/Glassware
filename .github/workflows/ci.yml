@@ -10,26 +10,23 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Why a single iOS-Simulator job rather than splitting logic vs snapshot:
-# the package targets .iOS(.v26) and .macOS(.v26). The GitHub-hosted
-# macos-15 runner ships macOS 15 at runtime, where SwiftUI lacks iOS-26
-# additions like `GlassEffectContainer`. `swift test` on the host fails
-# to dlopen the test bundle (symbol not found). xcodebuild against an
-# iOS 26 simulator is the only environment where the library actually
-# loads, so both logic and snapshot tests run there.
+# Run logic and UIKit snapshot tests together on an iOS 26 simulator.
+# macos-26 provides Xcode 26.6 and Swift 6.3, required by AemiSDR's
+# transitive aemi dependency.
 
 jobs:
   tests:
     name: Tests (iOS Simulator)
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
 
       - name: Select Xcode
         run: |
-          sudo xcode-select -s "$(ls -d /Applications/Xcode_26* | sort -V | tail -1)"
+          sudo xcode-select -s /Applications/Xcode_26.6.app
           xcodebuild -version
+          swift --version
 
       - name: Install Metal Toolchain
         # Xcode 26 ships the Metal compiler as a separately-downloadable
