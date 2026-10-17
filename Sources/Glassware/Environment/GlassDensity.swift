@@ -143,12 +143,14 @@ public struct GlassEdgeContext: Sendable, Equatable {
 ///
 /// Use this to customize how the toolbar handles safe area insets at the bottom edge.
 public struct GlassPaddingConfiguration: Sendable, Equatable {
-    /// Additional padding from the safe area (or screen edge if ignoring safe area).
+    /// Additional bottom padding, added to `externalPadding` and measured from the physical
+    /// screen edge (the container inset is not added: the home indicator is drawn in that gap).
+    /// With `ignoresSafeArea`, only this value separates the bar from the edge.
     ///
     /// `nil` means "use the density-based value from `GlassMetrics.edgePadding`".
     public let additionalPadding: CGFloat?
 
-    /// Whether to ignore the bottom safe area (home indicator).
+    /// Whether the bar sits flush with the screen edge, without the `externalPadding` margin.
     public let ignoresSafeArea: Bool
 
     /// External padding from screen edges (horizontal margins).

@@ -12,7 +12,9 @@ import SwiftUI
 /// Applies appropriate safe area padding based on the toolbar edge and padding configuration.
 ///
 /// This modifier handles the complexity of safe area management for each edge:
-/// - **Top/Bottom**: Uses `safeAreaPadding` to respect notch/home indicator
+/// - **Top**: Uses `safeAreaPadding` to respect the notch / Dynamic Island
+/// - **Bottom**: Floats `externalPadding` (+ additional padding) above the physical edge, matching
+///   the side margins; the home indicator is drawn in that gap
 /// - **Leading/Trailing**: Uses regular `padding` for consistent inset from screen edge
 ///
 /// The difference is important because:
@@ -61,31 +63,24 @@ struct EdgeSafeAreaModifier: ViewModifier {
                     .padding(.bottom, additionalPadding)
                     .ignoresSafeArea(.all, edges: .bottom)
             } else {
-                // Respect safe area: bar sits inside the home-indicator inset
-                // AND inside the horizontal safe area. In landscape on devices
-                // with Dynamic Island / rounded corners the horizontal inset
-                // can exceed `externalPadding`; without honouring it the bar
-                // items render under those system regions (reported
-                // 2026-05-15, landscape capture, Glass top-trailing button
-                // clipped under the corner radius). `safeAreaPadding` stacks
-                // with the system inset rather than replacing it, so the
-                // declared `externalPadding` is added on top of whatever the
-                // device demands. `max(additionalPadding, cornerClearance)`
-                // enforces a minimum ~8pt visual gap from the device's
-                // rounded-corner curve even when the caller explicitly
-                // asked for zero additional padding via `.tight`.
+                // Floating bar: the gap to the physical bottom edge equals the
+                // gap at the sides (`externalPadding`, plus any additional
+                // padding), as with the system floating tab bar. The
+                // container's bottom inset is deliberately NOT added: the home
+                // indicator is drawn inside this gap, below the bar.
                 //
-                // Only the *keyboard* region is ignored (so the bar does not
-                // ride up with the keyboard). Ignoring `.all` here also
-                // discards the container inset, which put the bar on the
-                // physical screen edge: the home-indicator inset AND the
-                // `cornerClearance` padding below were both cancelled
-                // (measured: bar bottom 3 pt from a 844 pt screen edge
-                // against a 34 pt inset).
+                // Order matters. `ignoresSafeArea` must be the OUTERMOST
+                // modifier: it extends the frame to the physical edge, and the
+                // plain `padding` inside it then measures from that edge. The
+                // earlier order (`ignoresSafeArea` first, `safeAreaPadding`
+                // after) cancelled the padding along with the inset and put
+                // the bar on the screen edge; then a first fix that kept the
+                // inset made the bottom gap 42 pt against 16 pt at the sides.
+                // `.all` also keeps the bar in place when the keyboard shows.
                 content
                     .safeAreaPadding(.horizontal, externalPadding)
-                    .ignoresSafeArea(.keyboard, edges: .bottom)
-                    .safeAreaPadding(.bottom, max(additionalPadding, Self.cornerClearance))
+                    .padding(.bottom, externalPadding + additionalPadding)
+                    .ignoresSafeArea(.all, edges: .bottom)
             }
 
         case .top:
