@@ -74,9 +74,17 @@ struct EdgeSafeAreaModifier: ViewModifier {
                 // enforces a minimum ~8pt visual gap from the device's
                 // rounded-corner curve even when the caller explicitly
                 // asked for zero additional padding via `.tight`.
+                //
+                // Only the *keyboard* region is ignored (so the bar does not
+                // ride up with the keyboard). Ignoring `.all` here also
+                // discards the container inset, which put the bar on the
+                // physical screen edge: the home-indicator inset AND the
+                // `cornerClearance` padding below were both cancelled
+                // (measured: bar bottom 3 pt from a 844 pt screen edge
+                // against a 34 pt inset).
                 content
                     .safeAreaPadding(.horizontal, externalPadding)
-                    .ignoresSafeArea(.all, edges: .bottom)
+                    .ignoresSafeArea(.keyboard, edges: .bottom)
                     .safeAreaPadding(.bottom, max(additionalPadding, Self.cornerClearance))
             }
 
