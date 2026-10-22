@@ -20,7 +20,7 @@ private let package = Package(
         // Snapshot testing — pinned exact to keep snapshot baselines stable
         // across dependency-resolver runs. Bump deliberately when intentionally
         // regenerating snapshots.
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", exact: "1.19.2"),
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", exact: "1.19.7"),
     ],
     targets: [
         .target(
