@@ -6,7 +6,7 @@ private let package = Package(
     name: "Glassware",
     platforms: [
         .iOS(.v26),
-        .macOS(.v26)
+        .macOS(.v26),
     ],
     products: [
         .library(
@@ -15,11 +15,12 @@ private let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/Aemi-Studio/AemiSDR.git", revision: "8e7d2399489315a9fd9c9351485d69cf2d7ce7e0"),
+        .package(
+            url: "https://github.com/Aemi-Studio/AemiSDR.git", revision: "8e7d2399489315a9fd9c9351485d69cf2d7ce7e0"),
         // Snapshot testing — pinned exact to keep snapshot baselines stable
         // across dependency-resolver runs. Bump deliberately when intentionally
         // regenerating snapshots.
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", exact: "1.19.2")
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", exact: "1.19.2"),
     ],
     targets: [
         .target(
@@ -41,18 +42,18 @@ private let package = Package(
             name: "GlasswareSnapshotTests",
             dependencies: [
                 "Glassware",
-                .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
             ],
             exclude: ["__Snapshots__"],
             swiftSettings: snapshotTestSwiftSettings
-        )
+        ),
     ]
 )
 
 private let swiftSettings: [SwiftSetting] = [
     .strictMemorySafety(),
     .swiftLanguageMode(.version("6.2")),
-    .enableUpcomingFeature("StrictConcurrency")
+    .enableUpcomingFeature("StrictConcurrency"),
 ]
 
 // Snapshot tests use XCTest (Swift Testing support in swift-snapshot-testing
@@ -61,5 +62,5 @@ private let swiftSettings: [SwiftSetting] = [
 // memory safety would otherwise reject `UIHostingController`'s ObjC bridge.
 private let snapshotTestSwiftSettings: [SwiftSetting] = [
     .swiftLanguageMode(.version("6.2")),
-    .enableUpcomingFeature("StrictConcurrency")
+    .enableUpcomingFeature("StrictConcurrency"),
 ]
