@@ -20,7 +20,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Select Xcode
         run: |
@@ -109,7 +109,7 @@ jobs:
 
       - name: Upload result bundle on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-result-bundle
           path: TestResults.xcresult
@@ -117,7 +117,7 @@ jobs:
 
       - name: Upload snapshot diffs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: snapshot-failure-images
           # SnapshotTesting writes both `*-failure-*` (the diff) and the
